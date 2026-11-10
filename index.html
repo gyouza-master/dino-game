@@ -107,31 +107,84 @@
   .trail-boss.awake { filter: none; animation: bossshake .5s infinite; }
   @keyframes bossshake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
 
-  /* ===== チーム編成 ===== */
-  .team-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
-  .team-slot {
-    background: rgba(0,0,0,.35); border: 1px solid #2a3547; border-radius: 10px;
-    padding: 8px 6px; text-align: center; cursor: pointer;
+  /* ===== チーム編成（カード風） ===== */
+  .team-stage {
+    background:
+      radial-gradient(ellipse 90% 55% at 50% 0%, rgba(255,190,60,.14), transparent 60%),
+      radial-gradient(ellipse 120% 80% at 50% 115%, rgba(46,125,50,.35), transparent 60%),
+      linear-gradient(180deg, #101820 0%, #0a0f0c 55%, #060a07 100%);
+    border: 1px solid #3a2f16; border-radius: 14px;
+    padding: 12px 10px 10px; margin-bottom: 12px;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.55);
   }
-  .team-slot.empty {
-    border-style: dashed; color: #5b6b82; cursor: default;
-    display: flex; align-items: center; justify-content: center; min-height: 98px; font-size: 12px;
+  .team-stage-head {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;
   }
-  .team-slot .slot-art { height: 52px; display: flex; align-items: center; justify-content: center; }
-  .team-slot .slot-art img { max-width: 100%; max-height: 52px; }
-  .team-slot .slot-art .dino-emoji { font-size: 34px; }
-  .team-slot .t-name { font-weight: 900; font-size: 12px; margin-top: 4px; }
-  .t-sub { font-size: 11px; color: #8fa3bd; }
-  .team-row {
-    display: flex; align-items: center; gap: 10px;
-    background: rgba(0,0,0,.3); border: 1px solid #2a3547; border-radius: 10px;
-    padding: 6px 10px; margin-bottom: 6px; cursor: pointer;
+  .team-stage-head .st-title { font-weight: 900; letter-spacing: .12em; color: #e8d9a8; font-size: 13px; }
+  .team-stage-head .st-power { font-size: 12px; color: #8fa3bd; }
+  .team-stage-head .st-power b { color: #ffd24a; font-size: 19px; }
+  .team-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .dcard {
+    position: relative; aspect-ratio: 3 / 4.1; border-radius: 10px; overflow: hidden;
+    border: 2px solid var(--rc, #666); cursor: pointer;
+    background: radial-gradient(ellipse at 50% 32%, #33475e 0%, #131c28 58%, #070a0e 100%);
+    box-shadow: 0 6px 14px rgba(0,0,0,.5);
   }
-  .team-row.in { border-color: #ffb300; box-shadow: 0 0 8px rgba(255,179,0,.35); }
-  .team-row .row-art { width: 46px; height: 46px; flex: none; display: flex; align-items: center; justify-content: center; }
-  .team-row .row-art img { max-width: 100%; max-height: 46px; }
-  .team-row .row-art .dino-emoji { font-size: 30px; }
-  .team-row .t-name { font-weight: 900; font-size: 13px; }
+  .dcard.leader { box-shadow: 0 0 0 2px #ffd700, 0 0 20px rgba(255,215,0,.45); }
+  .dcard img.dino-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; padding: 8px 4px 26px;
+    filter: drop-shadow(0 7px 7px rgba(0,0,0,.65));
+  }
+  .dcard .dino-emoji {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 54px; padding-bottom: 22px;
+  }
+  .dcard .dstars {
+    position: absolute; top: 4px; left: 6px; z-index: 2;
+    color: #ffd24a; font-size: 11px; letter-spacing: 1px; text-shadow: 0 1px 3px #000;
+  }
+  .dcard .dribbon {
+    position: absolute; top: 4px; right: -1px; z-index: 2;
+    background: linear-gradient(90deg, #b8860b, #ffd700); color: #231a00;
+    font-size: 9px; font-weight: 900; letter-spacing: .08em;
+    padding: 2px 7px; border-radius: 8px 0 0 8px;
+  }
+  .dcard .dname {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; text-align: center;
+    padding: 16px 4px 5px;
+    background: linear-gradient(transparent, rgba(0,0,0,.9) 45%);
+  }
+  .dcard .dname .n { display: block; font-weight: 900; font-size: 12px; color: #fff; text-shadow: 0 1px 3px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dcard .dname .s { display: block; font-size: 10px; color: #c8b269; margin-top: 1px; }
+  .dcard.empty {
+    border-style: dashed; border-color: #3d4a5f; cursor: default;
+    display: flex; align-items: center; justify-content: center;
+    color: #5b6b82; font-size: 11px; text-align: center; line-height: 1.7;
+    background: rgba(0,0,0,.3); box-shadow: none;
+  }
+  .team-stage-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+  .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .mcard {
+    position: relative; aspect-ratio: 3 / 3.4; border-radius: 9px; overflow: hidden;
+    border: 2px solid var(--rc, #444); cursor: pointer;
+    background: radial-gradient(ellipse at 50% 32%, #2a3a4e 0%, #10161f 60%, #070a0e 100%);
+  }
+  .mcard img.dino-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 5px 3px 20px; }
+  .mcard .dino-emoji { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 38px; padding-bottom: 16px; }
+  .mcard .mname {
+    position: absolute; left: 0; right: 0; bottom: 0; text-align: center;
+    padding: 10px 2px 3px; background: linear-gradient(transparent, rgba(0,0,0,.9) 45%);
+    font-size: 10px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mcard .mbadge {
+    position: absolute; top: 3px; right: 3px; z-index: 2;
+    background: linear-gradient(90deg, #b8860b, #ffd700); color: #231a00;
+    font-size: 9px; font-weight: 900; padding: 1px 6px; border-radius: 999px;
+  }
+  .mcard.in { box-shadow: 0 0 10px rgba(255,215,0,.55); }
+  .mcard:not(.in) { opacity: .82; }
 
   /* ===== 探索シーン ===== */
   .scene {
@@ -618,17 +671,20 @@
     <!-- ===== チームタブ ===== -->
     <section id="tab-team" class="hidden">
       <div class="panel">
-        <h2>バトルチーム <span class="small">（タップで編成／解除）</span></h2>
-        <div class="small" style="margin-bottom:8px">バトルに出る3体を自分で選べる。先頭がリーダー（必殺カットインに出る）。未設定のときはパワー順の自動編成になる。</div>
-        <div class="team-slots" id="team-slots"></div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-          <span class="small">チームパワー <b id="team-power" style="color:#ffd24a"></b></span>
-          <span>
-            <button class="btn-mini" onclick="autoTeam()">おまかせ</button>
+        <h2>チーム編成 <span class="small">（カードをタップで出撃／帰還）</span></h2>
+        <div class="team-stage">
+          <div class="team-stage-head">
+            <span class="st-title">出撃チーム</span>
+            <span class="st-power">総合パワー <b id="team-power"></b> <span id="team-mode" class="small"></span></span>
+          </div>
+          <div class="team-slots" id="team-slots"></div>
+          <div class="team-stage-btns">
+            <button class="btn-mini" onclick="autoTeam()">おまかせ編成</button>
             <button class="btn-mini" onclick="clearTeam()">自動に戻す</button>
-          </span>
+          </div>
         </div>
-        <div id="team-list"></div>
+        <div class="small" style="margin-bottom:8px">所持恐竜（タップで出撃／帰還・先頭がリーダー）</div>
+        <div class="team-grid" id="team-list"></div>
       </div>
     </section>
 
@@ -923,6 +979,18 @@ function clearTeam() {
   save();
   renderAll();
 }
+const CARD_RC = { N: '#9e9e9e', R: '#42a5f5', SR: '#c05cf0', SSR: '#ffb300' };
+function dcardHTML(id, i) {
+  const d = DINO_MAP[id];
+  const stars = '★'.repeat({ N: 1, R: 2, SR: 3, SSR: 4 }[d.rarity] || 1);
+  return `<div class="dcard${i === 0 ? ' leader' : ''}" style="--rc:${CARD_RC[d.rarity]}" onclick="toggleTeam('${id}')">
+    <span class="dstars">${stars}</span>
+    ${i === 0 ? '<span class="dribbon">LEADER</span>' : ''}
+    ${dinoArtHTML(id, ownAlt(id))}
+    <span class="dname"><span class="n">${d.name}${ownAlt(id) ? ' ✨' : ''}</span>
+    <span class="s">${TYPE_INFO[d.type].icon}${TYPE_INFO[d.type].name}・パワー ${dinoPower(id)}</span></span>
+  </div>`;
+}
 function renderTeam() {
   const el = document.getElementById('team-slots');
   if (!el) return;
@@ -931,25 +999,19 @@ function renderTeam() {
   let html = '';
   for (let i = 0; i < 3; i++) {
     const id = ids[i];
-    if (!id) { html += '<div class="team-slot empty">あき</div>'; continue; }
-    const d = DINO_MAP[id];
-    html += `<div class="team-slot" onclick="toggleTeam('${id}')">
-      <div class="slot-art">${dinoIconHTML(id)}</div>
-      <div class="t-name">${i === 0 ? '⭐ ' : ''}${d.name}${ownAlt(id) ? ' ✨' : ''}</div>
-      <div class="t-sub">${RARITY_NAME[d.rarity]}・${TYPE_INFO[d.type].name}<br>パワー ${dinoPower(id)}</div>
-    </div>`;
+    html += id ? dcardHTML(id, i) : '<div class="dcard empty">＋<br>恐竜を選ぶ</div>';
   }
   el.innerHTML = html;
-  document.getElementById('team-power').textContent = `${teamPower()}（${manual ? '手動編成' : '自動編成'}）`;
+  document.getElementById('team-power').textContent = teamPower();
+  document.getElementById('team-mode').textContent = manual ? '（手動編成）' : '（自動編成）';
   const list = Object.keys(S.restored).sort((a, b) => dinoPower(b) - dinoPower(a));
   document.getElementById('team-list').innerHTML = list.length ? list.map(id => {
     const d = DINO_MAP[id];
     const inTeam = ids.includes(id);
-    return `<div class="team-row${inTeam ? ' in' : ''}" onclick="toggleTeam('${id}')">
-      <span class="row-art">${dinoIconHTML(id)}</span>
-      <span style="flex:1"><span class="t-name">${d.name}${ownAlt(id) ? ' ✨' : ''}</span><br>
-      <span class="t-sub">${RARITY_NAME[d.rarity]}・${TYPE_INFO[d.type].icon}${TYPE_INFO[d.type].name}・パワー ${dinoPower(id)}</span></span>
-      <span class="t-sub">${inTeam ? '編成中' : 'タップで編成'}</span>
+    return `<div class="mcard${inTeam ? ' in' : ''}" style="--rc:${CARD_RC[d.rarity]}" onclick="toggleTeam('${id}')">
+      ${inTeam ? '<span class="mbadge">出撃中</span>' : ''}
+      ${dinoArtHTML(id, ownAlt(id))}
+      <span class="mname">${d.name}${ownAlt(id) ? ' ✨' : ''}</span>
     </div>`;
   }).join('') : '<div class="small">まだ恐竜がいない。図鑑で復元しよう！</div>';
 }
