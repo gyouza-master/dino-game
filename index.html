@@ -398,6 +398,60 @@
   nav > button.active { color: #ffb300; text-shadow: 0 0 8px rgba(255,179,0,.7); }
   .nav-badge { color: #ff3d00; }
 
+  /* ===== ブラッシュアップ：全体の質感 ===== */
+  main > section:not(.hidden) { animation: tabin .28s ease-out; }
+  @keyframes tabin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .panel { box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 6px 18px rgba(0,0,0,.45); }
+  h2 { padding-bottom: 4px; border-bottom: 1px solid rgba(255,179,0,.25); }
+  .scene::after {
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 42%, transparent 55%, rgba(0,0,0,.5) 100%);
+  }
+  .btn-explore { position: relative; overflow: hidden; }
+  .btn-explore::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 40%;
+    left: -60%; transform: skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+    animation: sheen 2.8s infinite;
+  }
+  @keyframes sheen { 0%, 55% { left: -60%; } 85%, 100% { left: 130%; } }
+  .dino-card.r-SSR { animation: ssrglow 1.6s infinite alternate; }
+  @keyframes ssrglow { from { box-shadow: 0 0 8px rgba(255,61,0,.4); } to { box-shadow: 0 0 20px rgba(255,61,0,.85); } }
+  nav > button.active .nav-ico { animation: navbounce 1.2s infinite; }
+  @keyframes navbounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+
+  /* ===== ひっさつカットイン ===== */
+  #cutin {
+    position: fixed; inset: 0; z-index: 65; display: flex; align-items: center;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,61,0,.16) 0 14px, transparent 14px 28px),
+      linear-gradient(90deg, rgba(10,0,0,.92), rgba(60,5,0,.75) 55%, rgba(10,0,0,.92));
+    overflow: hidden;
+  }
+  #cutin .cutin-art { flex: 0 0 46%; display: flex; justify-content: center; animation: cutin-art .3s cubic-bezier(.2,1.4,.4,1); }
+  #cutin .cutin-art img { max-width: 100%; max-height: 46vh; filter: drop-shadow(0 0 22px rgba(255,120,0,.9)); }
+  #cutin .cutin-art .dino-emoji { font-size: 110px; filter: drop-shadow(0 0 22px rgba(255,120,0,.9)); }
+  @keyframes cutin-art { from { transform: translateX(-70%) scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+  #cutin .cutin-text { flex: 1; animation: cutin-txt .3s .08s cubic-bezier(.2,1.4,.4,1) backwards; }
+  @keyframes cutin-txt { from { transform: translateX(60%); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cutin-skill {
+    font-size: 30px; font-weight: 900; color: #ffd24a; line-height: 1.25;
+    text-shadow: 0 0 14px rgba(255,106,0,.9), 0 3px 3px #000;
+  }
+  .cutin-name { font-size: 13px; font-weight: 900; color: #ffb3a0; margin-top: 4px; text-shadow: 0 2px 2px #000; }
+
+  /* ===== 図鑑マイルストーン ===== */
+  .mile-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,.08); font-size: 12px; }
+  .mile-row:last-child { border-bottom: none; }
+  .mile-row .mile-info { flex: 1; }
+  .mile-row .mile-state { font-weight: 900; color: #8fa3bd; white-space: nowrap; }
+  .mile-row.done .mile-state { color: #ffd24a; }
+  .btn-claim {
+    font-size: 11px; font-weight: 900; padding: 6px 10px; border-radius: 8px; border: 1px solid #fff0b3;
+    background: linear-gradient(180deg, #ffd24a, #e08a00); color: #3a2000; font-family: inherit; cursor: pointer;
+    animation: pulse-cyan 1s infinite alternate;
+  }
+
   .hidden { display: none !important; }
   .center { text-align: center; }
   .small { font-size: 11px; color: #8fa3bd; }
@@ -412,6 +466,7 @@
       <span class="res-chip">🗝️ <span id="h-keys">0</span></span>
       <span class="res-chip">🎫 <span id="h-tickets">0</span></span>
       <span class="res-chip">💪 <span id="h-power">0</span></span>
+      <button class="btn-mini" id="btn-mute" onclick="toggleMute()" style="margin-left:auto">🔊</button>
     </div>
     <div class="bars">
       <div class="bar-label"><span>スタミナ</span><span id="h-stamina-text">100/100</span></div>
@@ -468,6 +523,7 @@
       <div class="panel">
         <h2>🦖 恐竜図鑑 <span class="small">（<span id="dex-count">0</span>/<span id="dex-total">0</span>体 復元済み）</span></h2>
         <div class="small" style="margin-bottom:8px">DNA解析率100%で恐竜を復元できる。パワー上位3体がバトルチーム（⭐）。復元後に拾ったDNAは自動でパワーに変わる！</div>
+        <div id="dex-milestones" style="margin-bottom:10px"></div>
         <div class="dex-grid" id="dex-grid"></div>
       </div>
     </section>
@@ -519,6 +575,15 @@
       <button class="btn btn-explore" id="btn-attack" onclick="attack()">⚔️ こうげき！</button>
       <button class="btn btn-skill hidden" id="btn-skill" onclick="skillAttack()">🔥 ひっさつ発動！！</button>
       <button class="btn btn-sub" style="margin-top:8px" id="btn-flee" onclick="fleeBattle()">にげる</button>
+    </div>
+  </div>
+
+  <!-- ===== ひっさつカットイン ===== -->
+  <div id="cutin" class="hidden">
+    <div class="cutin-art" id="cutin-art"></div>
+    <div class="cutin-text">
+      <div class="cutin-skill" id="cutin-skill"></div>
+      <div class="cutin-name" id="cutin-name"></div>
     </div>
   </div>
 
@@ -623,6 +688,10 @@ function defaultSave() {
     progress: AREAS.map(() => 0),
     cleared: AREAS.map(() => false),
     bossReady: AREAS.map(() => false),
+    muted: false,       // 効果音ミュート
+    lastDaily: '',      // デイリーボーナス受取日
+    dailyStreak: 0,     // 連続ログイン日数
+    dexRewards: {},     // 図鑑マイルストーン受取済み
   };
 }
 function save() { localStorage.setItem('dinoDominionSave', JSON.stringify(S)); }
@@ -703,6 +772,67 @@ function flushToasts() {
   q.forEach((m, i) => setTimeout(() => toast(m), i * 250));
 }
 
+/* ========== 効果音（Web Audioで生成・素材ファイルなし） ========== */
+let AC = null;
+function audioCtx() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(freq, dur, opt) {
+  const ctx = audioCtx(); if (!ctx || !S || S.muted) return;
+  const o = opt || {};
+  const t0 = ctx.currentTime + (o.delay || 0);
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = o.type || 'square';
+  osc.frequency.setValueAtTime(freq, t0);
+  if (o.slide) osc.frequency.exponentialRampToValueAtTime(o.slide, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(o.vol || 0.08, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.05);
+}
+function noiseBurst(dur, vol, delay) {
+  const ctx = audioCtx(); if (!ctx || !S || S.muted) return;
+  const t0 = ctx.currentTime + (delay || 0);
+  const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+  const g = ctx.createGain(); g.gain.value = vol || 0.12;
+  src.connect(f); f.connect(g); g.connect(ctx.destination);
+  src.start(t0);
+}
+function sfx(name) {
+  if (!S || S.muted) return;
+  switch (name) {
+    case 'step':    noiseBurst(0.07, 0.05); break;
+    case 'dna':     tone(660, .09, { type:'sine', vol:.1 }); tone(990, .14, { type:'sine', vol:.1, delay:.08 }); break;
+    case 'coin':    tone(988, .07, { vol:.07 }); tone(1319, .18, { vol:.07, delay:.06 }); break;
+    case 'key':     tone(1568, .08, { type:'triangle', vol:.1 }); tone(2093, .14, { type:'triangle', vol:.1, delay:.07 }); break;
+    case 'ticket':  tone(1175, .08, { type:'triangle', vol:.1 }); tone(1568, .08, { type:'triangle', vol:.1, delay:.07 }); tone(2093, .16, { type:'triangle', vol:.1, delay:.14 }); break;
+    case 'rare':    [523, 659, 784, 1047].forEach((f, i) => tone(f, .16, { type:'triangle', vol:.11, delay: i * .07 })); break;
+    case 'hit':     noiseBurst(.12, .14); tone(160, .12, { type:'sawtooth', vol:.08, slide: 60 }); break;
+    case 'crit':    noiseBurst(.2, .2); tone(220, .25, { type:'sawtooth', vol:.12, slide: 40 }); tone(1200, .1, { vol:.06, delay:.02 }); break;
+    case 'skill':   tone(200, .5, { type:'sawtooth', vol:.1, slide: 1400 }); noiseBurst(.4, .1, .25); break;
+    case 'win':     [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .22, { type:'triangle', vol:.11, delay: i * .09 })); break;
+    case 'lose':    [392, 330, 262, 196].forEach((f, i) => tone(f, .22, { type:'triangle', vol:.09, delay: i * .12 })); break;
+    case 'restore': [784, 988, 1175, 1568].forEach((f, i) => tone(f, .2, { type:'sine', vol:.11, delay: i * .08 })); break;
+    case 'levelup': [659, 784, 988, 1319].forEach((f, i) => tone(f, .16, { vol:.09, delay: i * .06 })); break;
+    case 'alert':   tone(196, .15, { type:'sawtooth', vol:.1 }); tone(196, .15, { type:'sawtooth', vol:.1, delay:.2 }); break;
+  }
+}
+function toggleMute() {
+  S.muted = !S.muted;
+  save();
+  document.getElementById('btn-mute').textContent = S.muted ? '🔇' : '🔊';
+  if (!S.muted) sfx('ticket');
+}
+
 /* ========== パーティクル演出 ========== */
 // fromRectから飛び散り、toElがあればそこへ吸い込まれる
 function burstParticles(emoji, fromRect, toEl, n) {
@@ -736,13 +866,15 @@ function burstParticles(emoji, fromRect, toEl, n) {
 }
 function playResultFx(res) {
   const rect = document.getElementById('scene').getBoundingClientRect();
-  if (res.fx === 'coin') burstParticles('🪙', rect, document.getElementById('h-coins'), res.fxN || 8);
-  else if (res.fx === 'key') burstParticles('🗝️', rect, document.getElementById('h-keys'), 3);
-  else if (res.fx === 'ticket') burstParticles('🎫', rect, document.getElementById('h-tickets'), 3);
+  if (res.fx === 'coin') { sfx('coin'); burstParticles('🪙', rect, document.getElementById('h-coins'), res.fxN || 8); }
+  else if (res.fx === 'key') { sfx('key'); burstParticles('🗝️', rect, document.getElementById('h-keys'), 3); }
+  else if (res.fx === 'ticket') { sfx('ticket'); burstParticles('🎫', rect, document.getElementById('h-tickets'), 3); }
   else if (res.dinoId) {
+    sfx(res.rare ? 'rare' : 'dna');
     burstParticles('🧬', rect, document.getElementById('nav-dex'), 6);
     spawnCrossing(res.dinoId);
   }
+  else if (res.hunter) sfx('alert');
 }
 
 /* ========== 数字のカウントアップ演出 ========== */
@@ -782,6 +914,7 @@ function gainExp(n) {
     S.level++;
     S.maxStamina += 5;
     S.stamina = S.maxStamina;
+    sfx('levelup');
     toast(`🎉 <span class="c-rare">レベルアップ！ Lv${S.level}</span>　スタミナ全回復＆最大値UP！`);
   }
 }
@@ -1110,6 +1243,7 @@ function explore() {
   exploring = true;
   renderAll(); // スタミナ・道のりは即反映
   advance3D();
+  sfx('step');
   showStage('🐾', `<span class="c-sys">${pick(SUSPENSE)}<span class="dots"></span></span>`, '');
 
   const reveal = () => {
@@ -1210,6 +1344,7 @@ function dmgPop(dmg, big) {
   setTimeout(() => pop.remove(), 600);
 }
 function finishWin() {
+  sfx('win');
   battle.opp.type === 'hunter' ? winHunterBattle() : winBossBattle();
 }
 function attack() {
@@ -1217,6 +1352,7 @@ function attack() {
   const crit = Math.random() < 0.1;
   const dmg = Math.max(1, Math.round(effTeamPower(battle.opp.dtype) * (0.9 + Math.random() * 0.4) * (crit ? 2 : 1)));
   battle.hp -= dmg;
+  sfx(crit ? 'crit' : 'hit');
   battle.gauge = Math.min(100, battle.gauge + rand(16, 24));
   shakeBattle(crit);
   dmgPop(dmg, crit);
@@ -1231,16 +1367,37 @@ function attack() {
   if (battle.php <= 0) { loseBattle(); return; }
   renderBattle();
 }
+const SKILL_NAMES = { meat: 'デス・クラッシュ', plant: 'グランド・クエイク', aqua: 'メガ・ウェーブ' };
+let skillBusy = false; // カットイン中は二重発動しない
 function skillAttack() {
-  if (!battle || battle.gauge < 100) return;
+  if (!battle || battle.gauge < 100 || skillBusy) return;
+  skillBusy = true;
   battle.gauge = 0;
-  const dmg = Math.round(effTeamPower(battle.opp.dtype) * 3);
-  battle.hp -= dmg;
+  renderBattle();
+  document.getElementById('btn-skill').classList.add('hidden');
+
+  // カットイン：チームリーダーの画像＋必殺名をドンッと出す
+  const leader = teamIds()[0];
+  const ld = DINO_MAP[leader];
+  document.getElementById('cutin-art').innerHTML = dinoArtHTML(leader);
+  document.getElementById('cutin-skill').textContent = SKILL_NAMES[ld.type] + '！！';
+  document.getElementById('cutin-name').textContent = ld.name + ' のひっさつわざ';
+  const cut = document.getElementById('cutin');
+  cut.classList.remove('hidden');
+  sfx('skill');
   shakeBattle(true);
-  dmgPop(dmg, true);
-  document.getElementById('b-log').textContent = `🔥 ひっさつ発動！！ ${dmg}の大ダメージ！！`;
-  if (battle.hp <= 0) { finishWin(); return; }
-  renderBattle(); // ひっさつは反撃を受けない
+
+  setTimeout(() => {
+    cut.classList.add('hidden');
+    skillBusy = false;
+    if (!battle) return; // カットイン中に逃げていたら何もしない
+    const dmg = Math.round(effTeamPower(battle.opp.dtype) * 3);
+    battle.hp -= dmg;
+    dmgPop(dmg, true);
+    document.getElementById('b-log').textContent = `🔥 ひっさつ発動！！ ${dmg}の大ダメージ！！`;
+    if (battle.hp <= 0) { finishWin(); return; }
+    renderBattle(); // ひっさつは反撃を受けない
+  }, 950);
 }
 function winBossBattle() {
   const ai = S.areaIdx;
@@ -1295,6 +1452,7 @@ function winHunterBattle() {
   }, 1500);
 }
 function loseBattle() {
+  sfx('lose');
   renderBattle();
   document.getElementById('btn-attack').disabled = true;
   document.getElementById('btn-skill').classList.add('hidden');
@@ -1335,6 +1493,7 @@ function restore(id) {
   if ((S.dna[id] || 0) < 100) return;
   delete S.dna[id];
   S.restored[id] = 0;
+  sfx('restore');
   toast(`🧪 <span class="c-rare">復元成功！【${RARITY_NAME[d.rarity]}】${d.name} が仲間になった！</span>`);
   showStage(dinoArtHTML(id),
     `<span class="c-rare">復元成功！<br>${d.name} が仲間になった！</span>`,
@@ -1366,6 +1525,7 @@ function openChest() {
     const d = pick(DINOS.filter(x => x.rarity === rarity));
     em.textContent = '🎉';
     const res = gainDna(d.id, 2.5); // 宝箱は探索よりドッサリ
+    sfx(rarity === 'SR' || rarity === 'SSR' ? 'rare' : 'coin');
     document.getElementById('gacha-result').innerHTML =
       `<div class="big-art">${dinoArtHTML(d.id)}</div>` +
       `<span style="color:${RARITY_COLOR[rarity]}">【${RARITY_NAME[rarity]}】${d.name}のDNA +${res.pct}%！</span>`;
@@ -1397,6 +1557,7 @@ function rollGacha() {
     const rarity = r < 60 ? 'R' : r < 92 ? 'SR' : 'SSR';
     const d = pick(DINOS.filter(x => x.rarity === rarity));
     const res = gainDna(d.id, 4); // ガチャは特大サイズのDNA
+    sfx(rarity === 'SSR' ? 'win' : 'rare');
     egg.textContent = rarity === 'SSR' ? '👑' : '🐣';
     document.getElementById('egg-result').innerHTML =
       `<div class="big-art">${dinoArtHTML(d.id)}</div>` +
@@ -1417,6 +1578,68 @@ function buyKey() {
   S.coins -= 500;
   S.keys++;
   toast('🗝️ 500コインで鍵を買った！');
+  save();
+  renderAll();
+}
+
+/* ========== デイリーボーナス ========== */
+function dateStr(offsetDays) {
+  const d = new Date(Date.now() + (offsetDays || 0) * 86400000);
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+}
+function checkDaily() {
+  const today = dateStr(0);
+  if (S.lastDaily === today) return;
+  S.dailyStreak = (S.lastDaily === dateStr(-1)) ? (S.dailyStreak || 0) + 1 : 1;
+  S.lastDaily = today;
+  S.tickets += 1;
+  S.keys += 1;
+  S.stamina = S.maxStamina;
+  const streakBonus = S.dailyStreak % 7 === 0;
+  if (streakBonus) S.tickets += 2;
+  save();
+  setTimeout(() => {
+    sfx('win');
+    toast(`🌅 <span class="c-rare">デイリーボーナス！</span> ${S.dailyStreak}日連続ログイン`);
+    showStage('🌅', '<span class="c-rare">デイリーボーナス！</span>',
+      `🎫チケット+1　🗝️鍵+1　スタミナ全回復${streakBonus ? '　＋7日連続記念🎫+2！' : ''}`);
+  }, 400);
+}
+
+/* ========== 図鑑コンプリート報酬 ========== */
+const DEX_MILESTONES = [
+  { n: 3,  label: '3体復元', reward: '🎫 チケット×1', give: () => { S.tickets += 1; } },
+  { n: 5,  label: '5体復元', reward: '🗝️ 鍵×2', give: () => { S.keys += 2; } },
+  { n: 8,  label: '8体復元', reward: '🎫 チケット×2', give: () => { S.tickets += 2; } },
+  { n: 10, label: '10体復元', reward: '🪙 2000コイン', give: () => { S.coins += 2000; } },
+  { n: 13, label: '全13体コンプリート！', reward: '🎫 チケット×5', give: () => { S.tickets += 5; } },
+];
+function renderDexMilestones() {
+  const box = document.getElementById('dex-milestones');
+  if (!box) return;
+  const owned = Object.keys(S.restored).length;
+  const pct = Math.round(owned / DINOS.length * 100);
+  let html = `<div class="bar-label"><span>図鑑コンプ率</span><span>${owned}/${DINOS.length}体（${pct}%）</span></div>` +
+    `<div class="bar-outer" style="margin-bottom:6px"><div class="bar-inner bar-exp" style="width:${pct}%"></div></div>`;
+  DEX_MILESTONES.forEach((m, i) => {
+    const claimed = !!S.dexRewards[i];
+    const reached = owned >= m.n;
+    html += `<div class="mile-row${reached && !claimed ? ' done' : ''}"><span>${claimed ? '✅' : reached ? '🎁' : '🔒'}</span>` +
+      `<span class="mile-info">${m.label}：${m.reward}</span>` +
+      (claimed ? `<span class="mile-state">受取済</span>`
+        : reached ? `<button class="btn-claim" onclick="claimDexReward(${i})">受け取る</button>`
+        : `<span class="mile-state">あと${m.n - owned}体</span>`) +
+      `</div>`;
+  });
+  box.innerHTML = html;
+}
+function claimDexReward(i) {
+  const m = DEX_MILESTONES[i];
+  if (!m || S.dexRewards[i] || Object.keys(S.restored).length < m.n) return;
+  S.dexRewards[i] = true;
+  m.give();
+  sfx('win');
+  toast(`🎁 <span class="c-rare">図鑑報酬ゲット！</span> ${m.reward}`);
   save();
   renderAll();
 }
@@ -1502,6 +1725,7 @@ function renderField() {
 /* ========== 描画 ========== */
 function renderHeader() {
   document.getElementById('h-level').textContent = S.level;
+  document.getElementById('btn-mute').textContent = S.muted ? '🔇' : '🔊';
   animNumber('h-coins', S.coins);
   document.getElementById('h-keys').textContent = S.keys;
   document.getElementById('h-tickets').textContent = S.tickets;
@@ -1541,6 +1765,7 @@ function renderExplore() {
 }
 
 function renderDex() {
+  renderDexMilestones();
   document.getElementById('dex-count').textContent = Object.keys(S.restored).length;
   document.getElementById('dex-total').textContent = DINOS.length;
   const grid = document.getElementById('dex-grid');
@@ -1592,6 +1817,7 @@ load();
 tickStamina();
 init3D();
 renderAll();
+checkDaily();
 // 毎秒：スタミナ回復チェック＋ヘッダーとボタンだけ更新（図鑑は画像チラつき防止のため触らない）
 setInterval(() => { tickStamina(); renderHeader(); updateExploreBtn(); }, 1000);
 </script>
