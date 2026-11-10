@@ -116,22 +116,7 @@
     border: 1px solid #2a3547;
     overflow: hidden;
   }
-  .trees {
-    position: absolute; left: 0; white-space: nowrap; width: max-content;
-    pointer-events: none; line-height: 1;
-  }
-  .trees-back { bottom: 54px; font-size: 24px; opacity: .45; }
-  .trees-front { bottom: 6px; font-size: 32px; opacity: .9; }
-  .boss-loom {
-    position: absolute; right: 10px; bottom: 46px;
-    pointer-events: none; transition: all .5s;
-    transform-origin: bottom right;
-  }
-  .boss-loom img { max-height: 90px; filter: brightness(0) opacity(.8); }
-  .boss-loom .dino-emoji { font-size: 64px; filter: brightness(0) opacity(.8); }
-  .boss-loom.awake img, .boss-loom.awake .dino-emoji {
-    filter: brightness(0) opacity(.95) drop-shadow(0 0 10px rgba(255,61,0,.9));
-  }
+  #scene3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .stage-content {
     position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%);
     width: calc(100% - 32px);
@@ -439,9 +424,7 @@
         </div>
 
         <div class="scene" id="scene">
-          <div class="trees trees-back" id="trees-back"></div>
-          <div class="trees trees-front" id="trees-front"></div>
-          <div class="boss-loom" id="boss-loom"></div>
+          <canvas id="scene3d"></canvas>
           <div class="stage-content" id="stage">
             <div class="stage-art" id="stage-art">🌴</div>
             <div class="stage-text" id="stage-text">奥へ進んで<br>恐竜のDNAを探そう！</div>
@@ -509,6 +492,7 @@
   </nav>
 </div>
 
+<script src="three.min.js"></script>
 <script>
 /* ========== マスターデータ ========== */
 const DINOS = [
@@ -732,30 +716,178 @@ function stealFromPlayer(lo, hi) {
   return c > 0 ? `${c}コインを奪われた…` : '奪われるものが何もなかった！';
 }
 
-/* ========== シーン演出 ========== */
-let stripArea = -1;
+/* ========== 3Dシーン（three.js：奥へ進む一人称視点） ========== */
+// フィールドごとの3D配色（空＝フォグ・地面・木の葉・幹）
+const FIELD_3D = [
+  { fog:0x0a1f0e, ground:0x0d2b14, obj:'tree', leaf:0x1e5c2a, trunk:0x3a2a18, count:46, fogFar:70 },
+  { fog:0x1a222a, ground:0x15202a, obj:'tree', leaf:0x2a4a3a, trunk:0x2f3338, count:34, fogFar:45 },
+  { fog:0x2a0f08, ground:0x1a0d0a, obj:'rock', leaf:0x4a2a20, trunk:0x331a12, count:38, fogFar:60 },
+  { fog:0x0a1c30, ground:0x0e2238, obj:'rock', leaf:0x24384a, trunk:0x1a2a3a, count:30, fogFar:65 },
+  { fog:0x1c0f2a, ground:0x170d22, obj:'tree', leaf:0x2a1e44, trunk:0x241a30, count:42, fogFar:55 },
+];
+const WORLD_DEPTH = 140; // 木を使い回す奥行き
+let T3 = null;           // 3D一式（WebGLが使えない端末ではnullのまま＝背景グラデのみ）
+let worldArea = -1;
+
+function emojiTexture(emoji) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.font = '200px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, 128, 140);
+  return new THREE.CanvasTexture(c);
+}
+
+function init3D() {
+  try {
+    const canvas = document.getElementById('scene3d');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const scn = new THREE.Scene();
+    const cam = new THREE.PerspectiveCamera(62, 2, 0.1, 300);
+    cam.position.set(0, 2.4, 0);
+    scn.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const sun = new THREE.DirectionalLight(0xffddaa, 0.7);
+    sun.position.set(4, 10, 2);
+    scn.add(sun);
+    T3 = { renderer, scn, cam, group: null, trees: [], ground: null, boss: null,
+           camZ: 0, targetZ: 0, t: 0 };
+    resize3D();
+    window.addEventListener('resize', resize3D);
+    requestAnimationFrame(loop3D);
+  } catch (e) { T3 = null; }
+}
+
+function resize3D() {
+  if (!T3) return;
+  const box = document.getElementById('scene');
+  const w = box.clientWidth, h = box.clientHeight;
+  if (!w || !h) return;
+  T3.renderer.setSize(w, h, false);
+  T3.cam.aspect = w / h;
+  T3.cam.updateProjectionMatrix();
+}
+
+function makeTree(cfg) {
+  const g = new THREE.Group();
+  const trunkH = 1.6 + Math.random() * 1.2;
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.24, trunkH, 5),
+    new THREE.MeshLambertMaterial({ color: cfg.trunk }));
+  trunk.position.y = trunkH / 2;
+  g.add(trunk);
+  const leafH = 2.6 + Math.random() * 2.4;
+  const leaf = new THREE.Mesh(
+    new THREE.ConeGeometry(1 + Math.random() * 0.8, leafH, 6),
+    new THREE.MeshLambertMaterial({ color: cfg.leaf }));
+  leaf.position.y = trunkH + leafH / 2 - 0.3;
+  g.add(leaf);
+  return g;
+}
+function makeRock(cfg) {
+  const s = 0.8 + Math.random() * 1.6;
+  const rock = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(s, 0),
+    new THREE.MeshLambertMaterial({ color: Math.random() < 0.5 ? cfg.leaf : cfg.trunk, flatShading: true }));
+  rock.position.y = s * 0.55;
+  rock.rotation.set(Math.random(), Math.random() * 3, Math.random());
+  return rock;
+}
+function scatter(obj, camZ) {
+  // 道（中央±2.5）は空けて左右に配置
+  const side = Math.random() < 0.5 ? -1 : 1;
+  obj.position.x = side * (3 + Math.random() * 13);
+  obj.position.z = camZ - 4 - Math.random() * WORLD_DEPTH;
+}
+
+function build3DWorld(ai) {
+  if (!T3) return;
+  if (T3.group) T3.scn.remove(T3.group);
+  const cfg = FIELD_3D[ai];
+  const area = AREAS[ai];
+  T3.scn.fog = new THREE.Fog(cfg.fog, 3, cfg.fogFar);
+  T3.scn.background = new THREE.Color(cfg.fog);
+  const group = new THREE.Group();
+
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(90, WORLD_DEPTH * 2.5),
+    new THREE.MeshLambertMaterial({ color: cfg.ground }));
+  ground.rotation.x = -Math.PI / 2;
+  group.add(ground);
+  T3.ground = ground;
+
+  T3.trees = [];
+  for (let i = 0; i < cfg.count; i++) {
+    const obj = cfg.obj === 'tree' ? makeTree(cfg) : makeRock(cfg);
+    scatter(obj, T3.camZ);
+    T3.trees.push(obj);
+    group.add(obj);
+  }
+
+  // 奥で待ち構えるボス（画像があれば画像、なければ絵文字のシルエット）
+  const bossMat = new THREE.SpriteMaterial({
+    map: emojiTexture(DINO_MAP[area.boss.dino].emoji),
+    transparent: true, color: 0x111111,
+  });
+  if (!IMG_FAIL.has(area.boss.dino)) {
+    new THREE.TextureLoader().load('images/' + area.boss.dino + '.png',
+      tex => { bossMat.map = tex; bossMat.needsUpdate = true; }, undefined, () => {});
+  }
+  const boss = new THREE.Sprite(bossMat);
+  boss.scale.set(9, 9, 1);
+  boss.position.set(0, 4, T3.camZ - 60);
+  group.add(boss);
+  T3.boss = boss;
+
+  T3.scn.add(group);
+  T3.group = group;
+}
+
+function advance3D() {
+  if (T3) T3.targetZ -= 9; // タップ1回ぶん奥へ
+}
+
+function loop3D() {
+  if (!T3) return;
+  requestAnimationFrame(loop3D);
+  T3.t += 0.016;
+  // なめらかに前進（イージング）＋歩いてる風の揺れ
+  T3.camZ += (T3.targetZ - T3.camZ) * 0.07;
+  const walk = Math.min(1, Math.abs(T3.targetZ - T3.camZ));
+  T3.cam.position.z = T3.camZ;
+  T3.cam.position.y = 2.4 + Math.sin(T3.t * 7) * 0.06 * walk + Math.sin(T3.t * 1.3) * 0.03;
+  T3.cam.position.x = Math.sin(T3.t * 3.5) * 0.08 * walk;
+  T3.cam.lookAt(0, 1.9, T3.camZ - 14);
+
+  // 通り過ぎた木を奥へ使い回す
+  for (const tr of T3.trees) {
+    if (tr.position.z > T3.camZ + 4) {
+      tr.position.z -= WORLD_DEPTH;
+      const side = Math.random() < 0.5 ? -1 : 1;
+      tr.position.x = side * (3 + Math.random() * 13);
+    }
+  }
+  if (T3.ground) T3.ground.position.z = T3.camZ - WORLD_DEPTH;
+
+  // ボス：探索率が上がるほど近づいて見える
+  if (T3.boss) {
+    const p = S.progress[S.areaIdx];
+    T3.boss.position.z = T3.camZ - (14 + (100 - p) * 0.9);
+    T3.boss.material.opacity = p < 25 ? 0 : Math.min(1, (p - 25) / 50);
+    const awake = S.bossReady[S.areaIdx];
+    T3.boss.material.color.setHex(awake ? 0xffccaa : 0x111111);
+    if (awake) T3.boss.position.y = 4 + Math.sin(T3.t * 4) * 0.3;
+  }
+  T3.renderer.render(T3.scn, T3.cam);
+}
+
 function setupScenery() {
-  const area = AREAS[S.areaIdx];
-  if (stripArea === S.areaIdx) return;
-  stripArea = S.areaIdx;
-  const sc = area.scenery;
-  document.getElementById('scene').style.background = sc.bg;
-  // 同じ並びを繰り返して、1区間ぶんスライド→先頭に戻すと切れ目なく見える
-  document.getElementById('trees-back').textContent = (sc.back + ' ').repeat(8);
-  document.getElementById('trees-front').textContent = (sc.front + ' ').repeat(8);
-  document.getElementById('boss-loom').innerHTML = dinoArtHTML(area.boss.dino);
-}
-function slideStrip(el, pct, dur) {
-  el.style.transition = `transform ${dur}ms cubic-bezier(.25,.8,.3,1)`;
-  el.style.transform = `translateX(-${pct}%)`;
-  setTimeout(() => {
-    el.style.transition = 'none';
-    el.style.transform = 'translateX(0)';
-  }, dur + 50);
-}
-function advanceScenery() {
-  slideStrip(document.getElementById('trees-back'), 12.5, 650);  // 奥はゆっくり
-  slideStrip(document.getElementById('trees-front'), 25, 650);   // 手前は速く（視差）
+  if (worldArea === S.areaIdx) return;
+  worldArea = S.areaIdx;
+  document.getElementById('scene').style.background = AREAS[S.areaIdx].scenery.bg;
+  build3DWorld(S.areaIdx);
 }
 
 /* ========== 探索 ========== */
@@ -829,7 +961,7 @@ function explore() {
   // ===== 前進＋焦らし演出 =====
   exploring = true;
   renderAll(); // スタミナ・道のりは即反映
-  advanceScenery();
+  advance3D();
   showStage('🐾', `<span class="c-sys">${pick(SUSPENSE)}<span class="dots"></span></span>`, '');
 
   const reveal = () => {
@@ -1181,16 +1313,6 @@ function renderExplore() {
   tb.textContent = DINO_MAP[area.boss.dino].emoji;
   tb.classList.toggle('awake', S.bossReady[S.areaIdx]);
 
-  // 奥に迫るボスのシルエット
-  const loom = document.getElementById('boss-loom');
-  if (p < 40) {
-    loom.style.opacity = 0;
-  } else {
-    loom.style.opacity = Math.min(1, (p - 40) / 60);
-    loom.style.transform = `scale(${0.4 + (p / 100) * 0.6})`;
-  }
-  loom.classList.toggle('awake', S.bossReady[S.areaIdx]);
-
   updateExploreBtn();
 }
 
@@ -1238,6 +1360,7 @@ function renderAll() {
 /* ========== 起動 ========== */
 load();
 tickStamina();
+init3D();
 renderAll();
 // 毎秒：スタミナ回復チェック＋ヘッダーとボタンだけ更新（図鑑は画像チラつき防止のため触らない）
 setInterval(() => { tickStamina(); renderHeader(); updateExploreBtn(); }, 1000);
