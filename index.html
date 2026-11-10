@@ -1901,7 +1901,7 @@ function renderBattleTeam() {
   if (!el) return;
   el.innerHTML = teamIds().map((id, i) => {
     const d = DINO_MAP[id];
-    return `<div class="bf-member${i === 0 ? ' leader' : ''}" style="--rc:${CARD_RC[d.rarity]}">${dinoIconHTML(id)}<span class="bm-name">${i === 0 ? '⭐' : ''}${d.name}</span></div>`;
+    return `<div class="bf-member${i === 0 ? ' leader' : ''}" style="--rc:${RARITY_COLOR[d.rarity]}">${dinoIconHTML(id)}<span class="bm-name">${i === 0 ? '⭐' : ''}${d.name}</span></div>`;
   }).join('');
 }
 function flameBurst(anchor, size) {
