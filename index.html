@@ -597,6 +597,63 @@
   body[data-phase="morning"] .field-thumb { filter: brightness(1.06) sepia(.12); }
   body[data-phase="evening"] .field-thumb { filter: sepia(.28) brightness(.93); }
   body[data-phase="night"] .field-thumb { filter: brightness(.68) saturate(.85); }
+
+  /* ===== VISUAL POLISH（全体の質感統一） ===== */
+  body { -webkit-font-smoothing: antialiased; }
+  #app {
+    background:
+      radial-gradient(ellipse at 85% -5%, rgba(23,184,166,.13), transparent 50%),
+      radial-gradient(ellipse at 15% -10%, rgba(255,106,0,.13), transparent 55%),
+      linear-gradient(180deg, #12161f 0%, #0a0d13 45%, #06080c 100%);
+  }
+  header {
+    background: linear-gradient(180deg, rgba(30,40,56,.96), rgba(15,20,29,.96));
+    border-bottom: 1px solid rgba(23,184,166,.45);
+    box-shadow: 0 4px 18px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .res-chip {
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.35));
+    border-color: #43536b; border-radius: 999px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 2px 5px rgba(0,0,0,.35);
+  }
+  .panel {
+    background: linear-gradient(180deg, #182130, #0d1219);
+    border: 1px solid #2c3a4f; border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  h2 { border-bottom: 1px solid rgba(255,255,255,.07); letter-spacing: .03em; }
+  .btn:active { transform: translateY(1px) scale(.98); }
+  .btn-sub {
+    background: linear-gradient(180deg, #2c3a4f, #1a2331);
+    border: 1px solid #43536b; color: #cfe0ee;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 3px 8px rgba(0,0,0,.35);
+  }
+  .btn-gold { box-shadow: 0 0 14px rgba(255,179,0,.35), inset 0 1px 0 rgba(255,255,255,.5), 0 4px 10px rgba(0,0,0,.45); }
+  .bar-outer { box-shadow: inset 0 2px 5px rgba(0,0,0,.75), inset 0 -1px 0 rgba(255,255,255,.05); }
+  .bar-inner { filter: saturate(1.12); }
+  .bar-php.low, .bar-boss.low {
+    background: linear-gradient(90deg, #ff5252, #b71c1c);
+    box-shadow: 0 0 8px rgba(255,82,82,.7);
+    animation: lowPulse .45s infinite alternate;
+  }
+  @keyframes lowPulse { from { filter: brightness(.85); } to { filter: brightness(1.3); } }
+  .dino-card { border-radius: 12px; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 4px 10px rgba(0,0,0,.35); }
+  .dino-card .dino-art { background: radial-gradient(ellipse at 50% 72%, rgba(140,180,220,.1), transparent 70%); border-radius: 8px; }
+  .dino-card.r-SR { box-shadow: 0 0 10px rgba(255,179,0,.45), inset 0 1px 0 rgba(255,255,255,.06); }
+  .field-card {
+    border-radius: 14px;
+    background: linear-gradient(180deg, #182130, #0d1219);
+    box-shadow: 0 6px 16px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .field-card.current { box-shadow: 0 0 16px rgba(255,106,0,.45), inset 0 1px 0 rgba(255,255,255,.06); }
+  nav { box-shadow: 0 -6px 20px rgba(0,0,0,.5); }
+  .modal-bg { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+  .modal { border-radius: 18px; }
+  .toast { border-radius: 12px; }
+  .chest-emoji { background: radial-gradient(circle, rgba(255,210,74,.15), transparent 68%); border-radius: 50%; padding: 12px; }
+  .stage-content { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); box-shadow: 0 8px 22px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07); }
+  main::-webkit-scrollbar { width: 5px; }
+  main::-webkit-scrollbar-thumb { background: #2c3a4f; border-radius: 3px; }
   .bf-lunge { animation: bfLunge .35s ease; }
   @keyframes bfLunge { 0% { transform: none; } 40% { transform: translateY(-13px) scale(1.13); } 100% { transform: none; } }
   .bf-lunge-d { animation: bfLungeD .35s ease; }
@@ -2009,6 +2066,8 @@ function renderBattle() {
   document.getElementById('b-boss-hp-bar').style.width = Math.max(0, battle.hp / battle.hpMax * 100) + '%';
   document.getElementById('b-php-text').textContent = `${Math.max(0, battle.php)}/${battle.phpMax}`;
   document.getElementById('b-php-bar').style.width = Math.max(0, battle.php / battle.phpMax * 100) + '%';
+  document.getElementById('b-php-bar').classList.toggle('low', battle.php / battle.phpMax <= 0.25);
+  document.getElementById('b-boss-hp-bar').classList.toggle('low', battle.hp / battle.hpMax <= 0.25);
   document.getElementById('b-gauge-text').textContent = battle.gauge + '%';
   document.getElementById('b-gauge-bar').style.width = battle.gauge + '%';
   document.getElementById('btn-skill').classList.toggle('hidden', battle.gauge < 100);
