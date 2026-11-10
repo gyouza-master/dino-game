@@ -559,8 +559,8 @@
     display: flex; flex-direction: column; overflow: hidden;
     padding: calc(12px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
   }
-  #battle-box .battlefield { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-  #battle-box .bf-team { margin-top: auto; }
+  #battle-box .battlefield { flex: 1; position: relative; min-height: 240px; padding-bottom: 100px; }
+  #battle-box .bf-team { position: absolute; left: 8px; right: 8px; bottom: 10px; }
   #battle-box .bf-member { max-width: 76px; }
   #battle-box .boss-art { height: auto; min-height: 130px; padding: 10px 6px; }
   #battle-box .boss-art img { max-height: 160px; }
