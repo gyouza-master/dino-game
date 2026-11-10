@@ -544,6 +544,35 @@
     animation: flameBurst .38s ease-out forwards;
   }
   @keyframes flameBurst { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+
+  /* ===== ガチャ演出（フルスクリーン） ===== */
+  #gacha-fx {
+    position: fixed; inset: 0; z-index: 90; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 42%, #1b2740 0%, #070a12 70%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  #gacha-fx.hidden { display: none; }
+  .gfx-glow {
+    position: absolute; width: 330px; height: 330px; border-radius: 50%;
+    filter: blur(28px); opacity: .55; background: #5b6b82; transition: background .25s;
+  }
+  .gfx-egg { position: relative; z-index: 2; font-size: 92px; color: #ffe9b0; line-height: 1; }
+  .gfx-egg.wob { animation: gfxWob .5s infinite; }
+  .gfx-egg.frenzy { animation: gfxWob .15s infinite; }
+  @keyframes gfxWob { 0%, 100% { transform: rotate(-5deg) scale(1); } 50% { transform: rotate(5deg) scale(1.07); } }
+  .gfx-egg.burst { animation: gfxBurst .3s forwards; }
+  @keyframes gfxBurst { to { transform: scale(2.2); opacity: 0; } }
+  .gfx-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
+  .gfx-flash.on { animation: gfxFlash .45s ease-out; }
+  @keyframes gfxFlash { 0% { opacity: 0; } 15% { opacity: .95; } 100% { opacity: 0; } }
+  .gfx-hint { position: relative; z-index: 2; margin-top: 28px; min-height: 20px; font-weight: 900; color: #ffd24a; font-size: 15px; text-shadow: 0 2px 6px #000; letter-spacing: .08em; }
+  .gfx-reveal { position: relative; z-index: 2; text-align: center; padding: 0 20px; animation: bang .45s; }
+  .gfx-rarity { display: inline-block; font-weight: 900; font-size: 15px; padding: 4px 18px; border-radius: 999px; color: #0b0f16; margin-bottom: 10px; }
+  .gfx-art { height: 190px; display: flex; align-items: center; justify-content: center; }
+  .gfx-art img { max-height: 190px; filter: drop-shadow(0 10px 24px rgba(0,0,0,.6)); }
+  .gfx-art .dino-emoji { font-size: 110px; }
+  .gfx-name { font-size: 24px; font-weight: 900; margin-top: 6px; text-shadow: 0 2px 8px #000; }
+  .gfx-sub { font-size: 13px; font-weight: 900; color: #ffd24a; margin: 6px 0 14px; }
   .bf-lunge { animation: bfLunge .35s ease; }
   @keyframes bfLunge { 0% { transform: none; } 40% { transform: translateY(-13px) scale(1.13); } 100% { transform: none; } }
   .bf-lunge-d { animation: bfLungeD .35s ease; }
@@ -779,8 +808,8 @@
     <!-- ===== ガチャ・宝箱タブ ===== -->
     <section id="tab-chest" class="hidden">
       <div class="panel chest-stage">
-        <h2>DNAガチャ <span class="small">R以上確定！</span></h2>
-        <div class="small">チケットで回す本格ガチャ。超大量のレアDNAが出る…！？<br>チケットは探索で拾うか、ハンターを撃退して奪おう</div>
+        <h2>恐竜ガチャ <span class="small">R以上確定！</span></h2>
+        <div class="small">チケットで回す本格ガチャ。恐竜がそのまま仲間になる！<br>かぶったらその恐竜が強化されるよ。チケットは探索やハンター撃退で手に入る</div>
         <div style="margin:10px 0"><span class="chest-emoji" id="egg-emoji">🥚</span></div>
         <div class="gacha-result" id="egg-result"><span class="small">チケット：<span id="egg-tickets">0</span>枚</span></div>
         <button class="btn btn-gold" id="btn-gacha" onclick="rollGacha()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1.5a2.5 2.5 0 0 0 0 5V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1.5a2.5 2.5 0 0 0 0-5Z"/><path d="M13.5 7v10" stroke-dasharray="2 3"/></svg> ガチャを回す（チケット1枚）</button>
@@ -837,6 +866,21 @@
       <div class="cutin-skill" id="cutin-skill"></div>
       <div class="cutin-name" id="cutin-name"></div>
     </div>
+  </div>
+
+  <!-- ===== ガチャ演出 ===== -->
+  <div id="gacha-fx" class="hidden">
+    <div class="gfx-glow" id="gfx-glow"></div>
+    <div class="gfx-egg" id="gfx-egg"></div>
+    <div class="gfx-flash" id="gfx-flash"></div>
+    <div class="gfx-reveal hidden" id="gfx-reveal">
+      <div class="gfx-rarity" id="gfx-rarity"></div>
+      <div class="gfx-art" id="gfx-art"></div>
+      <div class="gfx-name" id="gfx-name"></div>
+      <div class="gfx-sub" id="gfx-sub"></div>
+      <button class="btn btn-gold" onclick="closeGachaFx()">やったー！</button>
+    </div>
+    <div class="gfx-hint" id="gfx-hint"></div>
   </div>
 
   <nav>
@@ -2153,6 +2197,7 @@ function openChest() {
 }
 /* ========== DNAガチャ（チケット制・R以上確定） ========== */
 let gachaBusy = false;
+let gachaFxTimers = [];
 function rollGacha() {
   if (gachaBusy) return;
   if (S.tickets < 1) {
@@ -2163,27 +2208,70 @@ function rollGacha() {
   S.tickets--;
   save();
   renderAll();
-  const egg = document.getElementById('egg-emoji');
-  egg.innerHTML = ICONS.egg; egg.classList.remove('gold');
-  egg.classList.remove('shake'); void egg.offsetWidth; egg.classList.add('shake');
-  document.getElementById('egg-result').innerHTML = '<span class="small">ピシ…ピシピシ…！</span>';
+  sfx('ticket');
 
-  setTimeout(() => {
-    const r = Math.random() * 100;
-    const rarity = r < 60 ? 'R' : r < 92 ? 'SR' : 'SSR';
-    const d = pick(DINOS.filter(x => x.rarity === rarity));
-    const res = gainDna(d.id, 4); // ガチャは特大サイズのDNA
-    sfx(rarity === 'SSR' ? 'win' : 'rare');
-    egg.innerHTML = rarity === 'SSR' ? ICONS.crown : ICONS.egg; egg.classList.toggle('gold', rarity === 'SSR');
-    document.getElementById('egg-result').innerHTML =
-      `<div class="big-art">${dinoArtHTML(d.id, wildAlt(d.id))}</div>` +
-      `<span style="color:${RARITY_COLOR[rarity]}">【${RARITY_NAME[rarity]}】${d.name}のDNA +${res.pct}%！</span>`;
-    if (rarity === 'SSR') toast('👑 <span class="c-rare">SSR！！伝説のDNAを引き当てた！！</span>');
+  const r = Math.random() * 100;
+  const rarity = r < 60 ? 'R' : r < 92 ? 'SR' : 'SSR';
+  const d = pick(DINOS.filter(x => x.rarity === rarity));
+  const isNew = S.restored[d.id] === undefined;
+  const dupBonus = rarity === 'SSR' ? 25 : rarity === 'SR' ? 15 : 10;
+  const color = RARITY_COLOR[rarity];
+
+  const fx = document.getElementById('gacha-fx');
+  const egg = document.getElementById('gfx-egg');
+  const glow = document.getElementById('gfx-glow');
+  const hint = document.getElementById('gfx-hint');
+  const reveal = document.getElementById('gfx-reveal');
+  fx.classList.remove('hidden');
+  reveal.classList.add('hidden');
+  egg.classList.remove('hidden', 'burst', 'frenzy');
+  egg.classList.add('wob');
+  egg.innerHTML = ICONS.egg;
+  glow.style.background = '#5b6b82';
+  hint.textContent = '…なにかが うごいた！';
+
+  const dur = rarity === 'SSR' ? 2600 : rarity === 'SR' ? 2000 : 1400;
+  gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
+  const at = (ms, fn) => gachaFxTimers.push(setTimeout(fn, ms));
+  at(dur * 0.35, () => { glow.style.background = color; hint.textContent = '…！？ ひかってる…！'; sfx('step'); });
+  if (rarity !== 'R') at(dur * 0.55, () => { glow.style.background = '#5b6b82'; hint.textContent = 'あれ…？ もどった…？'; });
+  at(dur * 0.72, () => { glow.style.background = color; egg.classList.add('frenzy'); hint.textContent = rarity === 'R' ? 'われる…！' : 'すごい色だ…！！'; sfx('alert'); });
+  at(dur, () => {
+    let altHit = false;
+    if (isNew) {
+      S.restored[d.id] = 0;
+      if (ALT_ART[d.id]) { S.variants[d.id] = Math.random() < ALT_RATE; altHit = ownAlt(d.id); }
+    } else {
+      S.restored[d.id] += dupBonus;
+    }
     save();
-    renderAll();
+    const flash = document.getElementById('gfx-flash');
+    flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
+    egg.classList.add('burst');
+    sfx(rarity === 'SSR' ? 'win' : 'rare');
+    setTimeout(() => {
+      egg.classList.add('hidden');
+      hint.textContent = '';
+      const rr = document.getElementById('gfx-rarity');
+      rr.textContent = '【' + RARITY_NAME[rarity] + '】';
+      rr.style.background = color;
+      document.getElementById('gfx-art').innerHTML = dinoArtHTML(d.id, isNew ? altHit : ownAlt(d.id));
+      document.getElementById('gfx-name').textContent = d.name;
+      document.getElementById('gfx-sub').innerHTML = isNew
+        ? (altHit ? '✨ 色違い個体が 仲間になった！！' : '仲間になった！！')
+        : `かぶり！ 強化された（パワー +${dupBonus}）`;
+      reveal.classList.remove('hidden');
+      renderAll();
+    }, 320);
+    document.getElementById('egg-result').innerHTML =
+      `<span style="color:${color}">【${RARITY_NAME[rarity]}】${d.name}</span> ` + (isNew ? 'が仲間になった！' : `かぶり強化 +${dupBonus}`);
     gachaBusy = false;
-    setTimeout(() => { if (!gachaBusy) { egg.innerHTML = ICONS.egg; egg.classList.remove('gold'); } }, 1500);
-  }, 900);
+  });
+}
+function closeGachaFx() {
+  gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
+  document.getElementById('gacha-fx').classList.add('hidden');
+  renderAll();
 }
 
 function buyKey() {
