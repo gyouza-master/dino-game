@@ -206,6 +206,31 @@
     color: #3a2000; text-shadow: 0 1px 0 rgba(255,255,255,.35);
   }
   .btn-gold:disabled { background: #2a3240; border-color: #455062; color: #6b7889; text-shadow: none; }
+  .btn-skill {
+    margin-top: 8px; padding: 14px; font-size: 17px;
+    background: linear-gradient(180deg, #c77dff, #7b2fd0 50%, #4a0f8a);
+    border: 2px solid #e8c8ff; border-bottom-width: 4px;
+    text-shadow: 0 2px 2px rgba(60,0,100,.8);
+    animation: pulse-skill .5s infinite alternate;
+  }
+  @keyframes pulse-skill { from { box-shadow: 0 0 10px rgba(199,125,255,.6); } to { box-shadow: 0 0 26px rgba(199,125,255,1); } }
+  .bar-gauge { background: linear-gradient(90deg, #c77dff, #7b2fd0); box-shadow: 0 0 8px rgba(199,125,255,.7); }
+
+  /* 飛び散るパーティクル */
+  .fx-p {
+    position: fixed; z-index: 70; font-size: 18px; pointer-events: none;
+    opacity: 0; transform: translate(0, 0);
+    transition: all .35s cubic-bezier(.2, .7, .4, 1);
+  }
+  /* バトルの画面シェイク */
+  .shake-soft { animation: shakesoft .18s; }
+  @keyframes shakesoft { 25% { transform: translate(-3px, 2px); } 75% { transform: translate(3px, -2px); } }
+  .shake-hard { animation: shakehard .4s; }
+  @keyframes shakehard {
+    10% { transform: translate(-8px, 5px) rotate(-1deg); } 30% { transform: translate(8px, -6px) rotate(1deg); }
+    50% { transform: translate(-7px, 4px); } 70% { transform: translate(6px, -4px); } 90% { transform: translate(-3px, 2px); }
+  }
+  .dino-type { font-size: 9px; color: #8fa3bd; }
 
   /* ===== フィールド選択 ===== */
   .field-card {
@@ -385,6 +410,7 @@
       <span class="lv-badge">Lv <span id="h-level">1</span></span>
       <span class="res-chip">🪙 <span id="h-coins">0</span></span>
       <span class="res-chip">🗝️ <span id="h-keys">0</span></span>
+      <span class="res-chip">🎫 <span id="h-tickets">0</span></span>
       <span class="res-chip">💪 <span id="h-power">0</span></span>
     </div>
     <div class="bars">
@@ -446,8 +472,16 @@
       </div>
     </section>
 
-    <!-- ===== 宝箱タブ ===== -->
+    <!-- ===== ガチャ・宝箱タブ ===== -->
     <section id="tab-chest" class="hidden">
+      <div class="panel chest-stage">
+        <h2>🥚 DNAガチャ <span class="small">R以上確定！</span></h2>
+        <div class="small">チケットで回す本格ガチャ。超大量のレアDNAが出る…！？<br>チケットは探索で拾うか、ハンターを撃退して奪おう</div>
+        <div style="margin:10px 0"><span class="chest-emoji" id="egg-emoji">🥚</span></div>
+        <div class="gacha-result" id="egg-result"><span class="small">チケット：<span id="egg-tickets">0</span>枚</span></div>
+        <button class="btn btn-gold" id="btn-gacha" onclick="rollGacha()">🎫 ガチャを回す（チケット1枚）</button>
+        <div class="small" style="margin-top:8px">R 60%／SR 32%／<span class="c-rare">SSR 8%</span></div>
+      </div>
       <div class="panel chest-stage">
         <h2>🎁 なぞの宝箱</h2>
         <div class="small">探索で拾った鍵で開けよう。レアDNAが眠っているかも…！</div>
@@ -474,12 +508,16 @@
     <div class="modal" id="battle-box">
       <div class="boss-title" id="b-boss-name"></div>
       <div class="boss-art" id="b-boss-art"></div>
+      <div class="small" id="b-type" style="margin-bottom:6px"></div>
       <div class="bar-label"><span>敵HP</span><span id="b-boss-hp-text"></span></div>
       <div class="bar-outer"><div class="bar-inner bar-boss" id="b-boss-hp-bar" style="width:100%"></div></div>
       <div class="bar-label" style="margin-top:8px"><span>チームHP</span><span id="b-php-text"></span></div>
       <div class="bar-outer"><div class="bar-inner bar-php" id="b-php-bar" style="width:100%"></div></div>
+      <div class="bar-label" style="margin-top:8px"><span>🔥 ひっさつゲージ</span><span id="b-gauge-text">0%</span></div>
+      <div class="bar-outer" style="height:8px"><div class="bar-inner bar-gauge" id="b-gauge-bar" style="width:0%"></div></div>
       <div class="battle-log" id="b-log">たたかえ！</div>
       <button class="btn btn-explore" id="btn-attack" onclick="attack()">⚔️ こうげき！</button>
+      <button class="btn btn-skill hidden" id="btn-skill" onclick="skillAttack()">🔥 ひっさつ発動！！</button>
       <button class="btn btn-sub" style="margin-top:8px" id="btn-flee" onclick="fleeBattle()">にげる</button>
     </div>
   </div>
@@ -488,7 +526,7 @@
     <button id="nav-field" onclick="switchTab('field')"><span class="nav-ico">🗺️</span>フィールド</button>
     <button id="nav-explore" class="active" onclick="switchTab('explore')"><span class="nav-ico">🔍</span>探索</button>
     <button id="nav-dex" onclick="switchTab('dex')"><span class="nav-ico">🦖</span>図鑑<span class="nav-badge hidden" id="badge-dex">●</span></button>
-    <button id="nav-chest" onclick="switchTab('chest')"><span class="nav-ico">🎁</span>宝箱<span class="nav-badge hidden" id="badge-chest">●</span></button>
+    <button id="nav-chest" onclick="switchTab('chest')"><span class="nav-ico">🎰</span>ガチャ<span class="nav-badge hidden" id="badge-chest">●</span></button>
   </nav>
 </div>
 
@@ -496,20 +534,23 @@
 <script>
 /* ========== マスターデータ ========== */
 const DINOS = [
-  { id:'compso',  name:'コンプソグナトゥス', emoji:'🦎', rarity:'N',   need:5,  pow:20 },
-  { id:'ovi',     name:'オヴィラプトル',     emoji:'🥚', rarity:'N',   need:5,  pow:25 },
-  { id:'para',    name:'パラサウロロフス',   emoji:'🦕', rarity:'N',   need:6,  pow:30 },
-  { id:'stego',   name:'ステゴサウルス',     emoji:'🦕', rarity:'N',   need:6,  pow:35 },
-  { id:'raptor',  name:'ヴェロキラプトル',   emoji:'🦖', rarity:'R',   need:10, pow:60 },
-  { id:'tri',     name:'トリケラトプス',     emoji:'🦏', rarity:'R',   need:10, pow:70 },
-  { id:'anky',    name:'アンキロサウルス',   emoji:'🐢', rarity:'R',   need:12, pow:80 },
-  { id:'ptera',   name:'プテラノドン',       emoji:'🦅', rarity:'R',   need:12, pow:90 },
-  { id:'carno',   name:'カルノタウルス',     emoji:'🦖', rarity:'SR',  need:18, pow:150 },
-  { id:'spino',   name:'スピノサウルス',     emoji:'🐊', rarity:'SR',  need:20, pow:180 },
-  { id:'brachio', name:'ブラキオサウルス',   emoji:'🦕', rarity:'SR',  need:20, pow:190 },
-  { id:'mosa',    name:'モササウルス',       emoji:'🐋', rarity:'SR',  need:20, pow:200 },
-  { id:'trex',    name:'ティラノサウルス',   emoji:'🦖', rarity:'SSR', need:30, pow:400 },
+  { id:'compso',  name:'コンプソグナトゥス', emoji:'🦎', rarity:'N',   type:'meat',  need:5,  pow:20 },
+  { id:'ovi',     name:'オヴィラプトル',     emoji:'🥚', rarity:'N',   type:'meat',  need:5,  pow:25 },
+  { id:'para',    name:'パラサウロロフス',   emoji:'🦕', rarity:'N',   type:'plant', need:6,  pow:30 },
+  { id:'stego',   name:'ステゴサウルス',     emoji:'🦕', rarity:'N',   type:'plant', need:6,  pow:35 },
+  { id:'raptor',  name:'ヴェロキラプトル',   emoji:'🦖', rarity:'R',   type:'meat',  need:10, pow:60 },
+  { id:'tri',     name:'トリケラトプス',     emoji:'🦏', rarity:'R',   type:'plant', need:10, pow:70 },
+  { id:'anky',    name:'アンキロサウルス',   emoji:'🐢', rarity:'R',   type:'plant', need:12, pow:80 },
+  { id:'ptera',   name:'プテラノドン',       emoji:'🦅', rarity:'R',   type:'aqua',  need:12, pow:90 },
+  { id:'carno',   name:'カルノタウルス',     emoji:'🦖', rarity:'SR',  type:'meat',  need:18, pow:150 },
+  { id:'spino',   name:'スピノサウルス',     emoji:'🐊', rarity:'SR',  type:'aqua',  need:20, pow:180 },
+  { id:'brachio', name:'ブラキオサウルス',   emoji:'🦕', rarity:'SR',  type:'plant', need:20, pow:190 },
+  { id:'mosa',    name:'モササウルス',       emoji:'🐋', rarity:'SR',  type:'aqua',  need:20, pow:200 },
+  { id:'trex',    name:'ティラノサウルス',   emoji:'🦖', rarity:'SSR', type:'meat',  need:30, pow:400 },
 ];
+// タイプ三すくみ：肉食🥩 → 草食🌿 → 水翔🌊 → 肉食…（→は「強い」方向）
+const TYPE_INFO = { meat:{icon:'🥩',name:'肉食'}, plant:{icon:'🌿',name:'草食'}, aqua:{icon:'🌊',name:'水翔'} };
+const TYPE_BEATS = { meat:'plant', plant:'aqua', aqua:'meat' };
 const DINO_MAP = Object.fromEntries(DINOS.map(d => [d.id, d]));
 
 const AREAS = [
@@ -564,7 +605,7 @@ function defaultSave() {
   return {
     level: 1, exp: 0,
     stamina: 100, maxStamina: 100, lastStamina: Date.now(),
-    coins: 0, keys: 1,
+    coins: 0, keys: 1, tickets: 1,
     dna: {},            // id -> 解析率%（0〜100）
     dnaV2: true,        // %方式フラグ（旧セーブは個数→%に変換）
     restored: {},       // id -> 追加パワー（強化分）
@@ -613,6 +654,14 @@ function teamIds() {
   return Object.keys(S.restored).sort((a, b) => dinoPower(b) - dinoPower(a)).slice(0, 3);
 }
 function teamPower() { return teamIds().reduce((sum, id) => sum + dinoPower(id), 0); }
+// タイプ相性込みのチームパワー（有利×1.5／不利×0.75）
+function effTeamPower(oppType) {
+  return Math.round(teamIds().reduce((sum, id) => {
+    const t = DINO_MAP[id].type;
+    const m = TYPE_BEATS[t] === oppType ? 1.5 : TYPE_BEATS[oppType] === t ? 0.75 : 1;
+    return sum + dinoPower(id) * m;
+  }, 0));
+}
 
 /* ========== 結果ドン！ステージ ========== */
 function showStage(artHTML, textHTML, subText, mega) {
@@ -642,6 +691,65 @@ function flushToasts() {
   const q = toastQueue || [];
   toastQueue = null;
   q.forEach((m, i) => setTimeout(() => toast(m), i * 250));
+}
+
+/* ========== パーティクル演出 ========== */
+// fromRectから飛び散り、toElがあればそこへ吸い込まれる
+function burstParticles(emoji, fromRect, toEl, n) {
+  const sx = fromRect.left + fromRect.width / 2;
+  const sy = fromRect.top + fromRect.height / 2;
+  for (let i = 0; i < (n || 8); i++) {
+    const p = document.createElement('span');
+    p.className = 'fx-p';
+    p.textContent = emoji;
+    p.style.left = sx + 'px';
+    p.style.top = sy + 'px';
+    document.body.appendChild(p);
+    const dx = (Math.random() - 0.5) * 170;
+    const dy = -30 - Math.random() * 90;
+    requestAnimationFrame(() => {
+      p.style.opacity = 1;
+      p.style.transform = `translate(${dx}px, ${dy}px) scale(1.15) rotate(${(Math.random() - 0.5) * 60}deg)`;
+    });
+    setTimeout(() => {
+      if (toEl) {
+        const tr = toEl.getBoundingClientRect();
+        p.style.transition = 'all .45s cubic-bezier(.5,0,.8,.4)';
+        p.style.transform = `translate(${tr.left + tr.width / 2 - sx}px, ${tr.top + tr.height / 2 - sy}px) scale(.3)`;
+        setTimeout(() => p.remove(), 470);
+      } else {
+        p.style.opacity = 0;
+        setTimeout(() => p.remove(), 350);
+      }
+    }, 320 + i * 45);
+  }
+}
+function playResultFx(res) {
+  const rect = document.getElementById('scene').getBoundingClientRect();
+  if (res.fx === 'coin') burstParticles('🪙', rect, document.getElementById('h-coins'), res.fxN || 8);
+  else if (res.fx === 'key') burstParticles('🗝️', rect, document.getElementById('h-keys'), 3);
+  else if (res.fx === 'ticket') burstParticles('🎫', rect, document.getElementById('h-tickets'), 3);
+  else if (res.dinoId) {
+    burstParticles('🧬', rect, document.getElementById('nav-dex'), 6);
+    spawnCrossing(res.dinoId);
+  }
+}
+
+/* ========== 数字のカウントアップ演出 ========== */
+const numAnim = {};
+function animNumber(id, to) {
+  const el = document.getElementById(id);
+  const from = numAnim[id] !== undefined ? numAnim[id] : to;
+  numAnim[id] = to;
+  if (from === to) { el.textContent = to; return; }
+  cancelAnimationFrame(numAnim[id + '_raf']);
+  const start = performance.now(), dur = 450;
+  const step = now => {
+    const k = Math.min(1, (now - start) / dur);
+    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) numAnim[id + '_raf'] = requestAnimationFrame(step);
+  };
+  numAnim[id + '_raf'] = requestAnimationFrame(step);
 }
 
 /* ========== スタミナ回復 ========== */
@@ -683,7 +791,7 @@ function gainDna(id, mult) {
       art: dinoArtHTML(id),
       text: `<span class="c-dna">🧬 ${d.name}のDNAを採取</span><br>パワー +${powGain}！`,
       sub: `現在のパワー ${dinoPower(id)}`,
-      rare: isRare, pct,
+      rare: isRare, pct, dinoId: id,
     };
   }
 
@@ -698,7 +806,7 @@ function gainDna(id, mult) {
     art: dinoArtHTML(id),
     text: `<span class="${cls}">🧬 ${rareTag}${d.name}の<br>DNAを採取！</span>`,
     sub: `解析率 ${S.dna[id]}%（+${pct}%）`,
-    rare: isRare, pct,
+    rare: isRare, pct, dinoId: id,
   };
 }
 
@@ -805,6 +913,7 @@ function scatter(obj, camZ) {
 function build3DWorld(ai) {
   if (!T3) return;
   if (T3.group) T3.scn.remove(T3.group);
+  if (T3.crossing) { T3.scn.remove(T3.crossing.s); T3.crossing = null; }
   const cfg = FIELD_3D[ai];
   const area = AREAS[ai];
   T3.scn.fog = new THREE.Fog(cfg.fog, 3, cfg.fogFar);
@@ -849,6 +958,23 @@ function advance3D() {
   if (T3) T3.targetZ -= 9; // タップ1回ぶん奥へ
 }
 
+// DNA発見時：その野生恐竜が目の前をサッと横切る
+function spawnCrossing(id) {
+  if (!T3) return;
+  if (T3.crossing) { T3.scn.remove(T3.crossing.s); T3.crossing = null; }
+  const mat = new THREE.SpriteMaterial({ map: emojiTexture(DINO_MAP[id].emoji), transparent: true });
+  if (!IMG_FAIL.has(id)) {
+    new THREE.TextureLoader().load('images/' + id + '.png',
+      tex => { mat.map = tex; mat.needsUpdate = true; }, undefined, () => {});
+  }
+  const s = new THREE.Sprite(mat);
+  s.scale.set(3, 3, 1);
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  s.position.set(-dir * 10, 1.6, T3.camZ - 9);
+  T3.scn.add(s);
+  T3.crossing = { s, dir };
+}
+
 function loop3D() {
   if (!T3) return;
   requestAnimationFrame(loop3D);
@@ -880,6 +1006,15 @@ function loop3D() {
     T3.boss.material.color.setHex(awake ? 0xffccaa : 0x111111);
     if (awake) T3.boss.position.y = 4 + Math.sin(T3.t * 4) * 0.3;
   }
+
+  // 野生恐竜の横切り
+  if (T3.crossing) {
+    const c = T3.crossing;
+    c.s.position.x += c.dir * 0.16;
+    c.s.position.y = 1.6 + Math.abs(Math.sin(T3.t * 10)) * 0.25;
+    if (Math.abs(c.s.position.x) > 11) { T3.scn.remove(c.s); T3.crossing = null; }
+  }
+
   T3.renderer.render(T3.scn, T3.cam);
 }
 
@@ -932,15 +1067,18 @@ function explore() {
   } else if (r < 58) {
     const c = rand(20, 60);
     S.coins += c;
-    res = { art:'🪙', text:`<span class="c-coin">${c}コインを拾った！</span>`, sub:`所持コイン ${S.coins}` };
-  } else if (r < 66) {
+    res = { art:'🪙', text:`<span class="c-coin">${c}コインを拾った！</span>`, sub:`所持コイン ${S.coins}`, fx:'coin' };
+  } else if (r < 65) {
     S.keys++;
-    res = { art:'🗝️', text:'<span class="c-key">宝箱の鍵を見つけた！</span>', sub:'宝箱タブで開けてみよう！', badge:'chest' };
-  } else if (r < 72) {
+    res = { art:'🗝️', text:'<span class="c-key">宝箱の鍵を見つけた！</span>', sub:'ガチャタブで開けてみよう！', badge:'chest', fx:'key' };
+  } else if (r < 69) {
+    S.tickets++;
+    res = { art:'🎫', text:'<span class="c-key">ガチャチケットを拾った！</span>', sub:'ガチャタブで回してみよう！', badge:'chest', fx:'ticket', rare:true };
+  } else if (r < 74) {
     const c = rand(80, 150);
     S.coins += c;
-    res = { art:'💰', text:`<span class="c-rare">お宝ザクザク！<br>${c}コイン獲得！</span>`, sub:`所持コイン ${S.coins}`, rare:true };
-  } else if (r < 80) {
+    res = { art:'💰', text:`<span class="c-rare">お宝ザクザク！<br>${c}コイン獲得！</span>`, sub:`所持コイン ${S.coins}`, rare:true, fx:'coin', fxN:14 };
+  } else if (r < 82) {
     // 恐竜ハンター乱入！
     res = {
       art:'🥷',
@@ -967,6 +1105,7 @@ function explore() {
   const reveal = () => {
     showStage(res.art, res.text, res.sub, res.rare);
     if (res.badge) document.getElementById('badge-' + res.badge).classList.remove('hidden');
+    playResultFx(res);
     exploring = false;
     flushToasts();
     renderAll();
@@ -991,11 +1130,17 @@ function startBattle(opp) {
     opp,
     hp: opp.hp, hpMax: opp.hp,
     php: 100 + S.level * 10, phpMax: 100 + S.level * 10,
+    gauge: 0,
   };
+  const ti = TYPE_INFO[opp.dtype];
+  const goodType = Object.keys(TYPE_BEATS).find(t => TYPE_BEATS[t] === opp.dtype);
+  const gi = TYPE_INFO[goodType];
   document.getElementById('battle-box').classList.toggle('hunter', opp.type === 'hunter');
   document.getElementById('b-boss-name').textContent = opp.title;
   document.getElementById('b-boss-art').innerHTML = opp.art;
-  document.getElementById('b-log').textContent = `チームパワー ${teamPower()} でたたかえ！`;
+  document.getElementById('b-type').innerHTML =
+    `敵タイプ：${ti.icon}${ti.name}　<span class="c-rare">${gi.icon}${gi.name}タイプが有利！</span>`;
+  document.getElementById('b-log').textContent = `チームパワー ${effTeamPower(opp.dtype)} でたたかえ！`;
   document.getElementById('btn-attack').disabled = false;
   document.getElementById('btn-flee').textContent = opp.type === 'hunter' ? 'にげる（少し奪われる）' : 'にげる';
   document.getElementById('battle-modal').classList.remove('hidden');
@@ -1009,6 +1154,7 @@ function openBossBattle() {
     name: area.boss.name,
     title: `${area.boss.name}（${area.name}）`,
     art: dinoArtHTML(area.boss.dino),
+    dtype: DINO_MAP[area.boss.dino].type,
     hp: area.boss.hp, atk: area.boss.atk,
   });
 }
@@ -1020,6 +1166,7 @@ function openHunterBattle() {
     name,
     title: `${name}（DNA強奪犯）`,
     art: '<div class="dino-emoji">🥷</div>',
+    dtype: pick(['meat', 'plant', 'aqua']),
     hp: Math.round(area.boss.hp * 0.35),
     atk: Math.round(area.boss.atk * 0.7),
   });
@@ -1029,40 +1176,68 @@ function renderBattle() {
   document.getElementById('b-boss-hp-bar').style.width = Math.max(0, battle.hp / battle.hpMax * 100) + '%';
   document.getElementById('b-php-text').textContent = `${Math.max(0, battle.php)}/${battle.phpMax}`;
   document.getElementById('b-php-bar').style.width = Math.max(0, battle.php / battle.phpMax * 100) + '%';
+  document.getElementById('b-gauge-text').textContent = battle.gauge + '%';
+  document.getElementById('b-gauge-bar').style.width = battle.gauge + '%';
+  document.getElementById('btn-skill').classList.toggle('hidden', battle.gauge < 100);
 }
-function attack() {
-  if (!battle) return;
-  const dmg = Math.max(1, Math.round(teamPower() * (0.9 + Math.random() * 0.4)));
-  battle.hp -= dmg;
-
-  // ダメージ演出
+function shakeBattle(hard) {
+  const box = document.getElementById('battle-box');
+  const cls = hard ? 'shake-hard' : 'shake-soft';
+  box.classList.remove('shake-soft', 'shake-hard'); void box.offsetWidth;
+  box.classList.add(cls);
+}
+function dmgPop(dmg, big) {
   const art = document.getElementById('b-boss-art');
   art.classList.remove('hit'); void art.offsetWidth; art.classList.add('hit');
   const pop = document.createElement('div');
   pop.className = 'dmg-pop';
   pop.textContent = dmg;
+  if (big) { pop.style.fontSize = '36px'; pop.style.color = '#ff9d2e'; }
   const rect = art.getBoundingClientRect();
   pop.style.left = (rect.left + rect.width / 2 - 20 + rand(-20, 20)) + 'px';
   pop.style.top = (rect.top + rand(-10, 10)) + 'px';
   document.body.appendChild(pop);
   setTimeout(() => pop.remove(), 600);
+}
+function finishWin() {
+  battle.opp.type === 'hunter' ? winHunterBattle() : winBossBattle();
+}
+function attack() {
+  if (!battle) return;
+  const crit = Math.random() < 0.1;
+  const dmg = Math.max(1, Math.round(effTeamPower(battle.opp.dtype) * (0.9 + Math.random() * 0.4) * (crit ? 2 : 1)));
+  battle.hp -= dmg;
+  battle.gauge = Math.min(100, battle.gauge + rand(16, 24));
+  shakeBattle(crit);
+  dmgPop(dmg, crit);
 
-  if (battle.hp <= 0) {
-    battle.opp.type === 'hunter' ? winHunterBattle() : winBossBattle();
-    return;
-  }
+  if (battle.hp <= 0) { finishWin(); return; }
 
   const oppDmg = rand(Math.round(battle.opp.atk * 0.7), Math.round(battle.opp.atk * 1.3));
   battle.php -= oppDmg;
-  document.getElementById('b-log').textContent = `${dmg}ダメージ！ ${battle.opp.name}の反撃で ${oppDmg} くらった！`;
+  document.getElementById('b-log').textContent =
+    (crit ? `💥 クリティカル！${dmg}ダメージ！！` : `${dmg}ダメージ！`) +
+    ` ${battle.opp.name}の反撃で ${oppDmg} くらった！`;
   if (battle.php <= 0) { loseBattle(); return; }
   renderBattle();
+}
+function skillAttack() {
+  if (!battle || battle.gauge < 100) return;
+  battle.gauge = 0;
+  const dmg = Math.round(effTeamPower(battle.opp.dtype) * 3);
+  battle.hp -= dmg;
+  shakeBattle(true);
+  dmgPop(dmg, true);
+  document.getElementById('b-log').textContent = `🔥 ひっさつ発動！！ ${dmg}の大ダメージ！！`;
+  if (battle.hp <= 0) { finishWin(); return; }
+  renderBattle(); // ひっさつは反撃を受けない
 }
 function winBossBattle() {
   const ai = S.areaIdx;
   const area = AREAS[ai];
   renderBattle();
   document.getElementById('btn-attack').disabled = true;
+  document.getElementById('btn-skill').classList.add('hidden');
   document.getElementById('b-log').textContent = `🎉 ${area.boss.name} を倒した！！`;
 
   const coinReward = 200 * (ai + 1);
@@ -1093,11 +1268,14 @@ function winHunterBattle() {
   const area = AREAS[ai];
   renderBattle();
   document.getElementById('btn-attack').disabled = true;
+  document.getElementById('btn-skill').classList.add('hidden');
   document.getElementById('b-log').textContent = `🎉 ${battle.opp.name} を追い払った！！`;
 
   const coinReward = 100 * (ai + 1);
   S.coins += coinReward;
+  S.tickets++;
   toast(`💥 <span class="c-rare">${battle.opp.name}を撃退！</span>　${coinReward}コインを取り返した！`);
+  toast('🎫 <span class="c-key">ガチャチケットを奪い取った！</span>');
   const loot = gainDna(pick(area.pool.concat(area.rare)), 2); // 相手が持っていたDNAを奪う
   gainExp(25 * (ai + 1));
   save();
@@ -1109,6 +1287,7 @@ function winHunterBattle() {
 function loseBattle() {
   renderBattle();
   document.getElementById('btn-attack').disabled = true;
+  document.getElementById('btn-skill').classList.add('hidden');
   let msg;
   if (battle.opp.type === 'hunter') {
     msg = stealFromPlayer(10, 20);
@@ -1186,6 +1365,40 @@ function openChest() {
     setTimeout(() => { if (!chestBusy) em.textContent = '🧰'; }, 1200);
   }, 600);
 }
+/* ========== DNAガチャ（チケット制・R以上確定） ========== */
+let gachaBusy = false;
+function rollGacha() {
+  if (gachaBusy) return;
+  if (S.tickets < 1) {
+    document.getElementById('egg-result').innerHTML = '<span class="small">チケットがない…探索で拾うかハンターを撃退しよう！</span>';
+    return;
+  }
+  gachaBusy = true;
+  S.tickets--;
+  save();
+  renderAll();
+  const egg = document.getElementById('egg-emoji');
+  egg.textContent = '🥚';
+  egg.classList.remove('shake'); void egg.offsetWidth; egg.classList.add('shake');
+  document.getElementById('egg-result').innerHTML = '<span class="small">ピシ…ピシピシ…！</span>';
+
+  setTimeout(() => {
+    const r = Math.random() * 100;
+    const rarity = r < 60 ? 'R' : r < 92 ? 'SR' : 'SSR';
+    const d = pick(DINOS.filter(x => x.rarity === rarity));
+    const res = gainDna(d.id, 4); // ガチャは特大サイズのDNA
+    egg.textContent = rarity === 'SSR' ? '👑' : '🐣';
+    document.getElementById('egg-result').innerHTML =
+      `<div class="big-art">${dinoArtHTML(d.id)}</div>` +
+      `<span style="color:${RARITY_COLOR[rarity]}">【${RARITY_NAME[rarity]}】${d.name}のDNA +${res.pct}%！</span>`;
+    if (rarity === 'SSR') toast('👑 <span class="c-rare">SSR！！伝説のDNAを引き当てた！！</span>');
+    save();
+    renderAll();
+    gachaBusy = false;
+    setTimeout(() => { if (!gachaBusy) egg.textContent = '🥚'; }, 1500);
+  }, 900);
+}
+
 function buyKey() {
   if (S.coins < 500) {
     document.getElementById('gacha-result').innerHTML = '<span class="small">コインが足りない…（500コイン必要）</span>';
@@ -1279,8 +1492,9 @@ function renderField() {
 /* ========== 描画 ========== */
 function renderHeader() {
   document.getElementById('h-level').textContent = S.level;
-  document.getElementById('h-coins').textContent = S.coins;
+  animNumber('h-coins', S.coins);
   document.getElementById('h-keys').textContent = S.keys;
+  document.getElementById('h-tickets').textContent = S.tickets;
   document.getElementById('h-power').textContent = teamPower();
   document.getElementById('h-stamina-text').textContent = `${S.stamina}/${S.maxStamina}`;
   document.getElementById('h-stamina-bar').style.width = (S.stamina / S.maxStamina * 100) + '%';
@@ -1331,6 +1545,7 @@ function renderDex() {
     if (team.includes(d.id)) html += `<span class="team-mark">⭐</span>`;
     html += `<div class="dino-art">${dinoArtHTML(d.id)}</div>`;
     html += `<div class="dino-name">${owned ? d.name : '？？？'}</div>`;
+    html += `<div class="dino-type">${TYPE_INFO[d.type].icon} ${TYPE_INFO[d.type].name}</div>`;
     if (owned) {
       html += `<div class="dino-pow">💪 ${dinoPower(d.id)}</div>`;
     } else {
@@ -1344,9 +1559,14 @@ function renderDex() {
 }
 
 function renderChest() {
-  document.getElementById('chest-keys').textContent = S.keys;
+  // 所持数表示は結果表示で上書きされて消えることがあるためnullチェック
+  const ck = document.getElementById('chest-keys');
+  if (ck) ck.textContent = S.keys;
+  const et = document.getElementById('egg-tickets');
+  if (et) et.textContent = S.tickets;
   document.getElementById('btn-open-chest').disabled = S.keys < 1;
   document.getElementById('btn-buy-key').disabled = S.coins < 500;
+  document.getElementById('btn-gacha').disabled = S.tickets < 1;
 }
 
 function renderAll() {
