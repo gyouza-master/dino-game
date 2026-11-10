@@ -107,6 +107,32 @@
   .trail-boss.awake { filter: none; animation: bossshake .5s infinite; }
   @keyframes bossshake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
 
+  /* ===== チーム編成 ===== */
+  .team-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .team-slot {
+    background: rgba(0,0,0,.35); border: 1px solid #2a3547; border-radius: 10px;
+    padding: 8px 6px; text-align: center; cursor: pointer;
+  }
+  .team-slot.empty {
+    border-style: dashed; color: #5b6b82; cursor: default;
+    display: flex; align-items: center; justify-content: center; min-height: 98px; font-size: 12px;
+  }
+  .team-slot .slot-art { height: 52px; display: flex; align-items: center; justify-content: center; }
+  .team-slot .slot-art img { max-width: 100%; max-height: 52px; }
+  .team-slot .slot-art .dino-emoji { font-size: 34px; }
+  .team-slot .t-name { font-weight: 900; font-size: 12px; margin-top: 4px; }
+  .t-sub { font-size: 11px; color: #8fa3bd; }
+  .team-row {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,0,0,.3); border: 1px solid #2a3547; border-radius: 10px;
+    padding: 6px 10px; margin-bottom: 6px; cursor: pointer;
+  }
+  .team-row.in { border-color: #ffb300; box-shadow: 0 0 8px rgba(255,179,0,.35); }
+  .team-row .row-art { width: 46px; height: 46px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .team-row .row-art img { max-width: 100%; max-height: 46px; }
+  .team-row .row-art .dino-emoji { font-size: 30px; }
+  .team-row .t-name { font-weight: 900; font-size: 13px; }
+
   /* ===== 探索シーン ===== */
   .scene {
     position: relative;
@@ -583,9 +609,26 @@
     <section id="tab-dex" class="hidden">
       <div class="panel">
         <h2>恐竜図鑑 <span class="small">（<span id="dex-count">0</span>/<span id="dex-total">0</span>体 復元済み）</span></h2>
-        <div class="small" style="margin-bottom:8px">DNA解析率100%で恐竜を復元できる。パワー上位3体がバトルチーム（⭐）。復元後に拾ったDNAは自動でパワーに変わる！</div>
+        <div class="small" style="margin-bottom:8px">DNA解析率100%で恐竜を復元できる。チームタブで編成した3体がバトルチーム（⭐）。復元後に拾ったDNAは自動でパワーに変わる！</div>
         <div id="dex-milestones" style="margin-bottom:10px"></div>
         <div class="dex-grid" id="dex-grid"></div>
+      </div>
+    </section>
+
+    <!-- ===== チームタブ ===== -->
+    <section id="tab-team" class="hidden">
+      <div class="panel">
+        <h2>バトルチーム <span class="small">（タップで編成／解除）</span></h2>
+        <div class="small" style="margin-bottom:8px">バトルに出る3体を自分で選べる。先頭がリーダー（必殺カットインに出る）。未設定のときはパワー順の自動編成になる。</div>
+        <div class="team-slots" id="team-slots"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+          <span class="small">チームパワー <b id="team-power" style="color:#ffd24a"></b></span>
+          <span>
+            <button class="btn-mini" onclick="autoTeam()">おまかせ</button>
+            <button class="btn-mini" onclick="clearTeam()">自動に戻す</button>
+          </span>
+        </div>
+        <div id="team-list"></div>
       </div>
     </section>
 
@@ -652,6 +695,7 @@
     <button id="nav-field" onclick="switchTab('field')"><span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>フィールド</button>
     <button id="nav-explore" class="active" onclick="switchTab('explore')"><span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 13.2 13.2 8.5 15.5 10.8 10.8Z" fill="currentColor" stroke="none"/></svg></span>探索</button>
     <button id="nav-dex" onclick="switchTab('dex')"><span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20"/></svg></span>図鑑<span class="nav-badge hidden" id="badge-dex">●</span></button>
+    <button id="nav-team" onclick="switchTab('team')"><span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.8 14.6c2.2.3 3.9 1.7 4.5 4.4"/></svg></span>チーム</button>
     <button id="nav-chest" onclick="switchTab('chest')"><span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c3.2 0 5.8 5 5.8 9.3a5.8 5.8 0 1 1-11.6 0C6.2 7.5 8.8 2.5 12 2.5Z"/></svg></span>ガチャ<span class="nav-badge hidden" id="badge-chest">●</span></button>
   </nav>
 </div>
@@ -806,6 +850,7 @@ function defaultSave() {
     dailyStreak: 0,     // 連続ログイン日数
     dexRewards: {},     // 図鑑マイルストーン受取済み
     variants: {},       // id -> 色違い個体なら true（復元時に抽選）
+    team: [],           // バトルチーム（id配列・最大3、空なら自動編成）
   };
 }
 function save() { localStorage.setItem('dinoDominionSave', JSON.stringify(S)); }
@@ -844,6 +889,7 @@ function load() {
     }
   }
   if (rolled) save();
+  if (Array.isArray(S.team)) S.team = S.team.filter(id => S.restored[id] !== undefined).slice(0, 3);
 }
 
 /* ========== ユーティリティ ========== */
@@ -853,7 +899,59 @@ function expNeed() { return S.level * 100; }
 
 function dinoPower(id) { return DINO_MAP[id].pow + (S.restored[id] || 0); }
 function teamIds() {
+  const manual = (S.team || []).filter(id => S.restored[id] !== undefined);
+  if (manual.length) return manual.slice(0, 3);
   return Object.keys(S.restored).sort((a, b) => dinoPower(b) - dinoPower(a)).slice(0, 3);
+}
+function toggleTeam(id) {
+  if (!S.team || !S.team.length) S.team = teamIds(); // 自動編成の顔ぶれを引き継いで手動化
+  const i = S.team.indexOf(id);
+  if (i >= 0) S.team.splice(i, 1);
+  else if (S.team.length < 3) S.team.push(id);
+  else { toast('チームは3体まで！外してから入れ替えてね'); return; }
+  sfx('coin');
+  save();
+  renderAll();
+}
+function autoTeam() {
+  S.team = Object.keys(S.restored).sort((a, b) => dinoPower(b) - dinoPower(a)).slice(0, 3);
+  save();
+  renderAll();
+}
+function clearTeam() {
+  S.team = [];
+  save();
+  renderAll();
+}
+function renderTeam() {
+  const el = document.getElementById('team-slots');
+  if (!el) return;
+  const ids = teamIds();
+  const manual = (S.team || []).length > 0;
+  let html = '';
+  for (let i = 0; i < 3; i++) {
+    const id = ids[i];
+    if (!id) { html += '<div class="team-slot empty">あき</div>'; continue; }
+    const d = DINO_MAP[id];
+    html += `<div class="team-slot" onclick="toggleTeam('${id}')">
+      <div class="slot-art">${dinoIconHTML(id)}</div>
+      <div class="t-name">${i === 0 ? '⭐ ' : ''}${d.name}${ownAlt(id) ? ' ✨' : ''}</div>
+      <div class="t-sub">${RARITY_NAME[d.rarity]}・${TYPE_INFO[d.type].name}<br>パワー ${dinoPower(id)}</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+  document.getElementById('team-power').textContent = `${teamPower()}（${manual ? '手動編成' : '自動編成'}）`;
+  const list = Object.keys(S.restored).sort((a, b) => dinoPower(b) - dinoPower(a));
+  document.getElementById('team-list').innerHTML = list.length ? list.map(id => {
+    const d = DINO_MAP[id];
+    const inTeam = ids.includes(id);
+    return `<div class="team-row${inTeam ? ' in' : ''}" onclick="toggleTeam('${id}')">
+      <span class="row-art">${dinoIconHTML(id)}</span>
+      <span style="flex:1"><span class="t-name">${d.name}${ownAlt(id) ? ' ✨' : ''}</span><br>
+      <span class="t-sub">${RARITY_NAME[d.rarity]}・${TYPE_INFO[d.type].icon}${TYPE_INFO[d.type].name}・パワー ${dinoPower(id)}</span></span>
+      <span class="t-sub">${inTeam ? '編成中' : 'タップで編成'}</span>
+    </div>`;
+  }).join('') : '<div class="small">まだ恐竜がいない。図鑑で復元しよう！</div>';
 }
 function teamPower() { return teamIds().reduce((sum, id) => sum + dinoPower(id), 0); }
 // タイプ相性込みのチームパワー（有利×1.5／不利×0.75）
@@ -1962,7 +2060,7 @@ function resetGame() {
 /* ========== タブ ========== */
 function switchTab(tab) {
   document.body.classList.toggle('explore-mode', tab === 'explore');
-  ['field', 'explore', 'dex', 'chest'].forEach(t => {
+  ['field', 'explore', 'dex', 'team', 'chest'].forEach(t => {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
     document.getElementById('nav-' + t).classList.toggle('active', t === tab);
   });
@@ -2112,6 +2210,7 @@ function renderAll() {
   renderExplore();
   renderField();
   renderDex();
+  renderTeam();
   renderChest();
 }
 
