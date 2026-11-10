@@ -752,12 +752,24 @@ function fieldArt(i) {
 
 /* ========== 恐竜の絵（images/xxx.png があれば画像、なければ絵文字） ========== */
 const IMG_FAIL = new Set(); // 読み込みに失敗したid（絵文字で代用）
-function dinoArtHTML(id) {
+/* 色違い（別カラー個体）：images/xxx-alt.png がある種だけ対象 */
+const ALT_ART = { stego: 1, para: 1, ovi: 1, compso: 1 };
+const ALT_RATE = 0.35; // 野生の出現・復元時の色違い率
+function artFile(id, alt) { return `images/${id}${alt && ALT_ART[id] ? '-alt' : ''}.png`; }
+function wildAlt(id) { return !!ALT_ART[id] && Math.random() < ALT_RATE; }
+function ownAlt(id) { return !!(S && S.variants && S.variants[id]); }
+function dinoArtHTML(id, alt) {
   const d = DINO_MAP[id];
   if (IMG_FAIL.has(id)) return `<div class="dino-emoji">${d.emoji}</div>`;
-  return `<img src="images/${id}.png" alt="${d.name}" data-id="${id}" data-emoji="${d.emoji}" onerror="imgFallback(this)">`;
+  const useAlt = !!alt && !!ALT_ART[id];
+  return `<img src="${artFile(id, useAlt)}" alt="${d.name}" data-id="${id}" data-emoji="${d.emoji}"${useAlt ? ' data-alt="1"' : ''} onerror="imgFallback(this)">`;
 }
 function imgFallback(img) {
+  if (img.dataset.alt) { // 色違い画像が読めない場合は通常色で代替
+    img.removeAttribute('data-alt');
+    img.src = `images/${img.dataset.id}.png`;
+    return;
+  }
   IMG_FAIL.add(img.dataset.id);
   const span = document.createElement('div');
   span.className = 'dino-emoji';
@@ -768,6 +780,7 @@ function imgFallback(img) {
 function dinoIconHTML(id) {
   const d = DINO_MAP[id];
   if (IMG_FAIL.has(id)) return dinoArtHTML(id);
+  if (ownAlt(id)) return dinoArtHTML(id, true);
   return `<img src="images/${id}-icon.png" alt="${d.name}" data-id="${id}" data-emoji="${d.emoji}" onerror="iconFallback(this)">`;
 }
 function iconFallback(img) {
@@ -793,6 +806,7 @@ function defaultSave() {
     lastDaily: '',      // デイリーボーナス受取日
     dailyStreak: 0,     // 連続ログイン日数
     dexRewards: {},     // 図鑑マイルストーン受取済み
+    variants: {},       // id -> 色違い個体なら true（復元時に抽選）
   };
 }
 function save() { localStorage.setItem('dinoDominionSave', JSON.stringify(S)); }
@@ -822,6 +836,15 @@ function load() {
         '奥へ進んでDNAを集めよう');
     }, 100);
   }
+  // 色違い：未決定の復元済み個体はここで一度だけ抽選する
+  let rolled = false;
+  for (const id in S.restored) {
+    if (ALT_ART[id] && S.variants[id] === undefined) {
+      S.variants[id] = Math.random() < ALT_RATE;
+      rolled = true;
+    }
+  }
+  if (rolled) save();
 }
 
 /* ========== ユーティリティ ========== */
@@ -1032,7 +1055,7 @@ function gainDna(id, mult) {
     const powGain = Math.max(1, Math.round(pct / 10));
     S.restored[id] += powGain;
     return {
-      art: dinoArtHTML(id),
+      art: dinoArtHTML(id, wildAlt(id)),
       text: `<span class="c-dna">🧬 ${d.name}のDNAを採取</span><br>パワー +${powGain}！`,
       sub: `現在のパワー ${dinoPower(id)}`,
       rare: isRare, pct, dinoId: id,
@@ -1347,7 +1370,7 @@ function build3DWorld(ai) {
   });
   T3.bossHasImg = false;
   if (!IMG_FAIL.has(area.boss.dino)) {
-    new THREE.TextureLoader().load('images/' + area.boss.dino + '.png',
+    new THREE.TextureLoader().load(artFile(area.boss.dino, wildAlt(area.boss.dino)),
       tex => { bossMat.map = tex; bossMat.needsUpdate = true; T3.bossHasImg = true; }, undefined, () => {});
   }
   const boss = new THREE.Sprite(bossMat);
@@ -1370,7 +1393,7 @@ function spawnCrossing(id) {
   if (T3.crossing) { T3.scn.remove(T3.crossing.s); T3.crossing = null; }
   const mat = new THREE.SpriteMaterial({ map: emojiTexture(DINO_MAP[id].emoji), transparent: true });
   if (!IMG_FAIL.has(id)) {
-    new THREE.TextureLoader().load('images/' + id + '.png',
+    new THREE.TextureLoader().load(artFile(id, wildAlt(id)),
       tex => { mat.map = tex; mat.needsUpdate = true; }, undefined, () => {});
   }
   const s = new THREE.Sprite(mat);
@@ -1574,7 +1597,7 @@ function openBossBattle() {
     type: 'boss',
     name: area.boss.name,
     title: `${area.boss.name}（${area.name}）`,
-    art: dinoArtHTML(area.boss.dino),
+    art: dinoArtHTML(area.boss.dino, wildAlt(area.boss.dino)),
     dtype: DINO_MAP[area.boss.dino].type,
     hp: area.boss.hp, atk: area.boss.atk,
   });
@@ -1656,7 +1679,7 @@ function skillAttack() {
   // カットイン：チームリーダーの画像＋必殺名をドンッと出す
   const leader = teamIds()[0];
   const ld = DINO_MAP[leader];
-  document.getElementById('cutin-art').innerHTML = dinoArtHTML(leader);
+  document.getElementById('cutin-art').innerHTML = dinoArtHTML(leader, ownAlt(leader));
   document.getElementById('cutin-skill').textContent = SKILL_NAMES[ld.type] + '！！';
   document.getElementById('cutin-name').textContent = ld.name + ' のひっさつわざ';
   const cut = document.getElementById('cutin');
@@ -1770,10 +1793,12 @@ function restore(id) {
   if ((S.dna[id] || 0) < 100) return;
   delete S.dna[id];
   S.restored[id] = 0;
+  if (ALT_ART[id]) S.variants[id] = Math.random() < ALT_RATE; // 色違い抽選
+  const isAlt = ownAlt(id);
   sfx('restore');
-  toast(`🧪 <span class="c-rare">復元成功！【${RARITY_NAME[d.rarity]}】${d.name} が仲間になった！</span>`);
-  showStage(dinoArtHTML(id),
-    `<span class="c-rare">復元成功！<br>${d.name} が仲間になった！</span>`,
+  toast(`🧪 <span class="c-rare">復元成功！【${RARITY_NAME[d.rarity]}】${d.name} が仲間になった！</span>${isAlt ? '<br>✨ <span class="c-rare">色違い個体だった！</span>' : ''}`);
+  showStage(dinoArtHTML(id, isAlt),
+    `<span class="c-rare">復元成功！<br>${d.name} が仲間になった！</span>${isAlt ? '<br>✨ 色違い個体！' : ''}`,
     `パワー ${dinoPower(id)}`, true);
   save();
   renderAll();
@@ -1804,7 +1829,7 @@ function openChest() {
     const res = gainDna(d.id, 2.5); // 宝箱は探索よりドッサリ
     sfx(rarity === 'SR' || rarity === 'SSR' ? 'rare' : 'coin');
     document.getElementById('gacha-result').innerHTML =
-      `<div class="big-art">${dinoArtHTML(d.id)}</div>` +
+      `<div class="big-art">${dinoArtHTML(d.id, wildAlt(d.id))}</div>` +
       `<span style="color:${RARITY_COLOR[rarity]}">【${RARITY_NAME[rarity]}】${d.name}のDNA +${res.pct}%！</span>`;
     save();
     renderAll();
@@ -1837,7 +1862,7 @@ function rollGacha() {
     sfx(rarity === 'SSR' ? 'win' : 'rare');
     egg.innerHTML = rarity === 'SSR' ? ICONS.crown : ICONS.egg; egg.classList.toggle('gold', rarity === 'SSR');
     document.getElementById('egg-result').innerHTML =
-      `<div class="big-art">${dinoArtHTML(d.id)}</div>` +
+      `<div class="big-art">${dinoArtHTML(d.id, wildAlt(d.id))}</div>` +
       `<span style="color:${RARITY_COLOR[rarity]}">【${RARITY_NAME[rarity]}】${d.name}のDNA +${res.pct}%！</span>`;
     if (rarity === 'SSR') toast('👑 <span class="c-rare">SSR！！伝説のDNAを引き当てた！！</span>');
     save();
