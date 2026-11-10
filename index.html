@@ -61,7 +61,7 @@
   .bar-exp { background: linear-gradient(90deg, #00d9ff, #0077ff); box-shadow: 0 0 6px rgba(0,217,255,.6); }
 
   /* ===== メイン ===== */
-  main { flex: 1; overflow-y: auto; padding: 12px 12px 76px; }
+  main { flex: 1; overflow-y: auto; padding: 12px 12px 104px; }
   .panel {
     background: linear-gradient(180deg, rgba(20,26,36,.9), rgba(10,13,18,.9));
     border: 1px solid #2a3547;
@@ -128,7 +128,7 @@
     border: 1px solid #17414d; padding: 14px 6px 8px;
     background:
       radial-gradient(ellipse 90% 60% at 50% 0%, rgba(64,224,208,.16), transparent 60%),
-      repeating-conic-gradient(#0d262e 0% 25%, #081a21 0% 50%) 0 0 / 30px 30px;
+      repeating-conic-gradient(#0b2029 0% 25%, #081820 0% 50%) 0 0 / 30px 30px;
     box-shadow: inset 0 0 46px rgba(0,0,0,.6);
   }
   .formation-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
@@ -280,7 +280,7 @@
   }
   /* 結果メッセージは中央でなく下部のメッセージ窓に */
   body.explore-mode .stage-content {
-    top: auto; bottom: 138px; left: 12px; right: 12px;
+    top: auto; bottom: 156px; left: 12px; right: 12px;
     transform: none; width: auto;
     display: flex; align-items: center; gap: 10px;
     text-align: left; padding: 8px 12px;
@@ -291,7 +291,7 @@
   body.explore-mode .stage-text { margin-top: 0; flex: 1; }
   /* 進むボタン：小さく、フィールドの上に浮かせる（画面の右下に固定） */
   body.explore-mode #btn-explore, body.explore-mode #btn-boss {
-    position: fixed; right: max(12px, calc(50vw - 228px)); bottom: 84px; z-index: 30;
+    position: fixed; right: max(12px, calc(50vw - 228px)); bottom: 104px; z-index: 30;
     width: auto; padding: 10px 22px; border-radius: 999px;
     font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.55);
   }
@@ -515,25 +515,35 @@
   nav {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; max-width: 480px;
-    display: flex; z-index: 20;
-    background: linear-gradient(180deg, #1c2330, #0c0f15);
-    border-top: 2px solid #ff6a00;
-    box-shadow: 0 -2px 12px rgba(255,106,0,.2);
+    display: flex; gap: 6px; z-index: 20;
+    padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, #0d1826, #070d16);
+    border-top: 1px solid #1e3a46;
+    box-shadow: 0 -6px 18px rgba(0,0,0,.5);
   }
   nav > button {
-    flex: 1; background: none; border: none; color: #6b7889;
-    font-family: inherit; font-size: 11px; font-weight: 900;
-    padding: 8px 0 max(8px, env(safe-area-inset-bottom)); cursor: pointer;
+    position: relative; flex: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: linear-gradient(180deg, #223140, #101a24);
+    border: 1px solid #31485c; border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 3px 6px rgba(0,0,0,.4);
+    color: #8fa6ba; font-family: inherit; font-size: 10px; font-weight: 900;
+    padding: 7px 0 6px; cursor: pointer;
   }
-  nav > button .nav-ico { display: block; font-size: 20px; }
-  nav > button.active { color: #ffb300; text-shadow: 0 0 8px rgba(255,179,0,.7); }
-  .nav-badge { color: #ff3d00; }
+  nav > button .nav-ico { display: block; font-size: 20px; line-height: 0; }
+  nav > button.active {
+    background: linear-gradient(180deg, #17b8a6, #0d7d74);
+    border-color: #2dd4bf; color: #eafffb;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 0 14px rgba(45,212,191,.35);
+    text-shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+  .nav-badge { position: absolute; top: 5px; right: calc(50% - 17px); font-size: 9px; color: #ff5252; }
 
   /* ===== ブラッシュアップ：全体の質感 ===== */
   main > section:not(.hidden) { animation: tabin .28s ease-out; }
   @keyframes tabin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .panel { box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 6px 18px rgba(0,0,0,.45); }
-  h2 { padding-bottom: 4px; border-bottom: 1px solid rgba(255,179,0,.25); }
+  .panel { box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+  h2 { padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.08); }
   .scene::after {
     content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
     background: radial-gradient(ellipse at 50% 42%, transparent 55%, rgba(0,0,0,.5) 100%);
@@ -548,8 +558,6 @@
   @keyframes sheen { 0%, 55% { left: -60%; } 85%, 100% { left: 130%; } }
   .dino-card.r-SSR { animation: ssrglow 1.6s infinite alternate; }
   @keyframes ssrglow { from { box-shadow: 0 0 8px rgba(255,61,0,.4); } to { box-shadow: 0 0 20px rgba(255,61,0,.85); } }
-  nav > button.active .nav-ico { animation: navbounce 1.2s infinite; }
-  @keyframes navbounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 
   /* ===== ひっさつカットイン ===== */
   #cutin {
