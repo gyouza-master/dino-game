@@ -126,6 +126,28 @@
     60% { transform: scale(1.15); opacity: 1; }
     100% { transform: scale(1); }
   }
+  /* レア発見時のドドン！（大きめのバウンド） */
+  .stage.mega > * { animation: megabang .5s; }
+  @keyframes megabang {
+    0% { transform: scale(.1); opacity: 0; }
+    55% { transform: scale(1.35); opacity: 1; }
+    75% { transform: scale(.95); }
+    100% { transform: scale(1); }
+  }
+  /* レア予兆の金色発光 */
+  .stage.gold {
+    border-color: #ffd24a;
+    animation: goldpulse .45s infinite alternate;
+  }
+  @keyframes goldpulse {
+    from { box-shadow: 0 0 10px rgba(255,210,74,.4), inset 0 0 20px rgba(255,179,0,.1); }
+    to   { box-shadow: 0 0 26px rgba(255,210,74,.8), inset 0 0 40px rgba(255,179,0,.25); }
+  }
+  /* 探索中…のテンテンテン */
+  .dots::after { display: inline-block; content: ''; animation: dots .9s steps(1, end) infinite; }
+  @keyframes dots {
+    0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; }
+  }
   .c-dna  { color: #00d9ff; text-shadow: 0 0 8px rgba(0,217,255,.8), 0 2px 3px #000; }
   .c-coin { color: #ffd24a; text-shadow: 0 0 8px rgba(255,210,74,.6), 0 2px 3px #000; }
   .c-key  { color: #7ec8ff; text-shadow: 0 0 8px rgba(126,200,255,.6), 0 2px 3px #000; }
@@ -520,16 +542,20 @@ function teamIds() {
 function teamPower() { return teamIds().reduce((sum, id) => sum + dinoPower(id), 0); }
 
 /* ========== 結果ドン！ステージ ========== */
-function showStage(artHTML, textHTML, subText) {
+function showStage(artHTML, textHTML, subText, mega) {
   const stage = document.getElementById('stage');
   document.getElementById('stage-art').innerHTML = artHTML;
   document.getElementById('stage-text').innerHTML = textHTML;
   document.getElementById('stage-sub').textContent = subText || '';
-  stage.classList.remove('bang'); void stage.offsetWidth; stage.classList.add('bang');
+  stage.classList.remove('bang', 'mega', 'gold'); void stage.offsetWidth;
+  stage.classList.add(mega ? 'mega' : 'bang');
+  if (mega) stage.classList.add('gold');
 }
 
 /* ========== トースト ========== */
+let toastQueue = null; // 配列のときは収集中（結果ドン！の後にまとめて出す）
 function toast(msg) {
+  if (toastQueue) { toastQueue.push(msg); return; }
   const box = document.getElementById('toasts');
   const t = document.createElement('div');
   t.className = 'toast';
@@ -537,6 +563,11 @@ function toast(msg) {
   box.appendChild(t);
   setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 2200);
   while (box.children.length > 3) box.firstChild.remove();
+}
+function flushToasts() {
+  const q = toastQueue || [];
+  toastQueue = null;
+  q.forEach((m, i) => setTimeout(() => toast(m), i * 250));
 }
 
 /* ========== スタミナ回復 ========== */
@@ -573,6 +604,7 @@ function gainDna(id, n) {
       art: dinoArtHTML(id),
       text: `<span class="c-dna">🧬 ${d.name}のDNA ×${n}</span><br>パワー +${n * 2}！`,
       sub: `現在のパワー ${dinoPower(id)}`,
+      rare: d.rarity === 'SR' || d.rarity === 'SSR',
     };
   }
   S.dna[id] = (S.dna[id] || 0) + n;
@@ -586,6 +618,7 @@ function gainDna(id, n) {
     art: dinoArtHTML(id),
     text: `<span class="${cls}">🧬 ${rareTag}${d.name}の<br>DNAを発見！</span>`,
     sub: `DNA ${S.dna[id]}/${d.need}`,
+    rare: d.rarity === 'SR' || d.rarity === 'SSR',
   };
 }
 
@@ -597,7 +630,16 @@ const FLAVOR = [
   '遠くで恐竜の鳴き声がした！',
   '化石のかけらを見つけたが、崩れてしまった…',
 ];
+const SUSPENSE = [
+  'ガサガサ…',
+  'そっと近づく…',
+  '足あとをたどる…',
+  '茂みをかき分ける…',
+  '岩かげをのぞきこむ…',
+];
+let exploring = false; // 焦らし演出中は連打無効
 function explore() {
+  if (exploring) return;
   tickStamina();
   if (S.stamina < STAMINA_COST) {
     showStage('💤', '<span class="c-sys">スタミナが足りない…</span>', '20秒で1回復するよ。少し待とう！');
@@ -611,27 +653,27 @@ function explore() {
   const area = AREAS[ai];
 
   S.progress[ai] = Math.min(100, S.progress[ai] + rand(4, 8));
+  toastQueue = []; // 通知は結果ドン！の後まで溜める（ネタバレ防止）
   gainExp(rand(8, 15));
 
+  let res;
   const r = Math.random() * 100;
   if (r < 40) {
     const isRare = Math.random() < 0.15 && area.rare.length > 0;
-    const res = gainDna(isRare ? pick(area.rare) : pick(area.pool), 1);
-    showStage(res.art, res.text, res.sub);
+    res = gainDna(isRare ? pick(area.rare) : pick(area.pool), 1);
   } else if (r < 60) {
     const c = rand(20, 60);
     S.coins += c;
-    showStage('🪙', `<span class="c-coin">${c}コインを拾った！</span>`, `所持コイン ${S.coins}`);
+    res = { art:'🪙', text:`<span class="c-coin">${c}コインを拾った！</span>`, sub:`所持コイン ${S.coins}` };
   } else if (r < 70) {
     S.keys++;
-    showStage('🗝️', '<span class="c-key">宝箱の鍵を見つけた！</span>', '宝箱タブで開けてみよう！');
-    document.getElementById('badge-chest').classList.remove('hidden');
+    res = { art:'🗝️', text:'<span class="c-key">宝箱の鍵を見つけた！</span>', sub:'宝箱タブで開けてみよう！', badge:'chest' };
   } else if (r < 75) {
     const c = rand(80, 150);
     S.coins += c;
-    showStage('💰', `<span class="c-rare">お宝ザクザク！<br>${c}コイン獲得！</span>`, `所持コイン ${S.coins}`);
+    res = { art:'💰', text:`<span class="c-rare">お宝ザクザク！<br>${c}コイン獲得！</span>`, sub:`所持コイン ${S.coins}`, rare:true };
   } else {
-    showStage(area.icon, `<span class="c-sys">${pick(FLAVOR)}</span>`, '');
+    res = { art: area.icon, text:`<span class="c-sys">${pick(FLAVOR)}</span>`, sub:'' };
   }
 
   if (S.progress[ai] >= 100) {
@@ -639,7 +681,29 @@ function explore() {
     toast(`⚠️ <span class="c-rare">${area.boss.name} が現れた！！</span>`);
   }
   save();
-  renderAll();
+
+  // ===== 焦らし演出 =====
+  exploring = true;
+  renderAll(); // スタミナ・ゲージは即反映
+  showStage('🐾', `<span class="c-sys">${pick(SUSPENSE)}<span class="dots"></span></span>`, '');
+
+  const reveal = () => {
+    showStage(res.art, res.text, res.sub, res.rare);
+    if (res.badge) document.getElementById('badge-' + res.badge).classList.remove('hidden');
+    exploring = false;
+    flushToasts();
+    renderAll();
+  };
+  setTimeout(() => {
+    if (res.rare) {
+      // レア予兆：金色に光って一拍ためる
+      showStage('✨', '<span class="c-rare">なにかの気配…！？</span>', '');
+      document.getElementById('stage').classList.add('gold');
+      setTimeout(reveal, 1100);
+    } else {
+      reveal();
+    }
+  }, 700);
 }
 
 /* ========== ボスバトル ========== */
@@ -850,9 +914,9 @@ function updateExploreBtn() {
   document.getElementById('btn-boss').classList.toggle('hidden', !bossReady);
   const exBtn = document.getElementById('btn-explore');
   exBtn.classList.toggle('hidden', bossReady);
-  exBtn.disabled = S.stamina < STAMINA_COST;
-  exBtn.textContent = S.stamina < STAMINA_COST
-    ? '💤 スタミナ回復待ち…'
+  exBtn.disabled = exploring || S.stamina < STAMINA_COST;
+  exBtn.textContent = exploring ? '🐾 探索中…'
+    : S.stamina < STAMINA_COST ? '💤 スタミナ回復待ち…'
     : '🔍 探索する（スタミナ-5）';
 }
 
