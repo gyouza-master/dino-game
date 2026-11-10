@@ -574,6 +574,52 @@
   .gfx-name { font-size: 24px; font-weight: 900; margin-top: 6px; text-shadow: 0 2px 8px #000; }
   .gfx-sub { font-size: 13px; font-weight: 900; color: #ffd24a; margin: 6px 0 14px; }
 
+  /* ===== ガチャ演出：参考作寄せ（粒子・ホロ・光の柱） ===== */
+  .gfx-particle { position: absolute; border-radius: 50%; pointer-events: none; z-index: 1; }
+  .gfx-card {
+    position: relative; width: min(78vw, 300px); margin: 0 auto;
+    border: 2px solid #46536a; border-radius: 14px; overflow: hidden;
+    background: linear-gradient(160deg, #1a2436, #0a0e16);
+    box-shadow: 0 18px 44px rgba(0,0,0,.65);
+    transition: transform .18s ease-out;
+    transform-style: preserve-3d; will-change: transform;
+  }
+  .gfx-card .gfx-art { height: 216px; position: relative; z-index: 1; }
+  .gfx-card .gfx-art img { max-height: 200px; }
+  .gfx-beams {
+    position: absolute; inset: -40%; z-index: 0; pointer-events: none; opacity: 0;
+    background: repeating-conic-gradient(from 0deg, rgba(255,220,120,.14) 0deg 7deg, transparent 7deg 18deg);
+    -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 68%);
+    mask-image: radial-gradient(circle, #000 0%, transparent 68%);
+    animation: beamsSpin 16s linear infinite;
+  }
+  .gfx-card.beams .gfx-beams { opacity: 1; }
+  @keyframes beamsSpin { to { transform: rotate(360deg); } }
+  .gfx-holo {
+    position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: screen;
+    background:
+      radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.34), transparent 46%),
+      linear-gradient(115deg, transparent 32%, rgba(255,0,128,.13) 43%, rgba(0,200,255,.15) 50%, rgba(255,220,0,.13) 57%, transparent 68%);
+    background-size: 100% 100%, 260% 100%;
+    background-position: 0 0, calc(var(--mx, 50%) * 1.6) 0;
+  }
+  .gfx-new {
+    position: absolute; top: 10px; left: 10px; z-index: 3;
+    background: linear-gradient(180deg, #ff7eb6, #e91e63); color: #fff;
+    font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 999px;
+    box-shadow: 0 0 12px rgba(233,30,99,.7); transform: rotate(-6deg);
+  }
+  .gfx-namebar {
+    position: relative; z-index: 3; padding: 8px 10px 10px;
+    background: linear-gradient(180deg, rgba(5,8,14,.25), rgba(5,8,14,.92) 40%);
+    font-size: 21px; font-weight: 900; text-shadow: 0 2px 8px #000;
+  }
+  #gacha-fx.gfx-shake { animation: gfxShake .4s; }
+  @keyframes gfxShake {
+    0%, 100% { transform: none; } 20% { transform: translate(-5px, 3px); }
+    40% { transform: translate(5px, -3px); } 60% { transform: translate(-4px, -2px); } 80% { transform: translate(4px, 2px); }
+  }
+
   /* ===== ブラッシュアップ：出会い・孵化・フィニッシュ・時間帯 ===== */
   .enc-sil img, .enc-sil .dino-emoji { filter: brightness(0) opacity(.88) drop-shadow(0 0 10px rgba(0,0,0,.8)); }
   .enc-sil { display: inline-block; animation: encIn .3s ease-out; }
@@ -956,8 +1002,13 @@
     <div class="gfx-flash" id="gfx-flash"></div>
     <div class="gfx-reveal hidden" id="gfx-reveal">
       <div class="gfx-rarity" id="gfx-rarity"></div>
-      <div class="gfx-art" id="gfx-art"></div>
-      <div class="gfx-name" id="gfx-name"></div>
+      <div class="gfx-card" id="gfx-card">
+        <div class="gfx-beams"></div>
+        <div class="gfx-art" id="gfx-art"></div>
+        <div class="gfx-holo"></div>
+        <div class="gfx-new hidden" id="gfx-new">NEW!</div>
+        <div class="gfx-namebar" id="gfx-name"></div>
+      </div>
       <div class="gfx-sub" id="gfx-sub"></div>
       <button class="btn btn-gold" onclick="closeGachaFx()">やったー！</button>
     </div>
@@ -2310,6 +2361,44 @@ function openChest() {
 /* ========== DNAガチャ（チケット制・R以上確定） ========== */
 let gachaBusy = false;
 let gachaFxTimers = [];
+let gachaParticleTimer = null;
+let gachaPending = null; // 演出中の抽選結果（スキップ用）
+let gachaGlowColor = '#9fb6cc';
+
+function spawnGachaParticle() {
+  const fx = document.getElementById('gacha-fx');
+  const egg = document.getElementById('gfx-egg');
+  if (!fx || !egg || fx.classList.contains('hidden')) return;
+  const fr = fx.getBoundingClientRect();
+  const er = egg.getBoundingClientRect();
+  const cx = er.left - fr.left + er.width / 2;
+  const cy = er.top - fr.top + er.height / 2;
+  const ang = Math.random() * Math.PI * 2;
+  const dist = 130 + Math.random() * 170;
+  const sx = cx + Math.cos(ang) * dist;
+  const sy = cy + Math.sin(ang) * dist * 0.8;
+  const p = document.createElement('div');
+  p.className = 'gfx-particle';
+  const size = 3 + Math.random() * 4;
+  p.style.width = size + 'px';
+  p.style.height = size + 'px';
+  p.style.left = sx + 'px';
+  p.style.top = sy + 'px';
+  p.style.background = gachaGlowColor;
+  p.style.boxShadow = `0 0 8px ${gachaGlowColor}`;
+  fx.appendChild(p);
+  if (p.animate) {
+    const anim = p.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 0 },
+      { opacity: 1, offset: 0.25 },
+      { transform: `translate(${cx - sx}px, ${cy - sy}px) scale(.3)`, opacity: 0 }
+    ], { duration: 620 + Math.random() * 380, easing: 'ease-in' });
+    anim.onfinish = () => p.remove();
+  } else {
+    setTimeout(() => p.remove(), 800);
+  }
+}
+
 function rollGacha() {
   if (gachaBusy) return;
   if (S.tickets < 1) {
@@ -2325,66 +2414,117 @@ function rollGacha() {
   const r = Math.random() * 100;
   const rarity = r < 60 ? 'R' : r < 92 ? 'SR' : 'SSR';
   const d = pick(DINOS.filter(x => x.rarity === rarity));
-  const isNew = S.restored[d.id] === undefined;
-  const dupBonus = rarity === 'SSR' ? 25 : rarity === 'SR' ? 15 : 10;
-  const color = RARITY_COLOR[rarity];
+  gachaPending = {
+    d, rarity,
+    isNew: S.restored[d.id] === undefined,
+    dupBonus: rarity === 'SSR' ? 25 : rarity === 'SR' ? 15 : 10,
+    color: RARITY_COLOR[rarity]
+  };
+  const color = gachaPending.color;
 
   const fx = document.getElementById('gacha-fx');
   const egg = document.getElementById('gfx-egg');
   const glow = document.getElementById('gfx-glow');
   const hint = document.getElementById('gfx-hint');
   const reveal = document.getElementById('gfx-reveal');
-  fx.classList.remove('hidden');
+  fx.classList.remove('hidden', 'gfx-shake');
   reveal.classList.add('hidden');
   egg.classList.remove('hidden', 'burst', 'frenzy');
   egg.classList.add('wob');
   egg.innerHTML = ICONS.egg;
   glow.style.background = '#5b6b82';
-  hint.textContent = '…なにかが うごいた！';
+  gachaGlowColor = '#9fb6cc';
+  hint.textContent = '…なにかが うごいた！（タップでスキップ）';
+
+  // 粒子が卵へ集まってくる
+  clearInterval(gachaParticleTimer);
+  gachaParticleTimer = setInterval(spawnGachaParticle, 110);
 
   const dur = rarity === 'SSR' ? 2600 : rarity === 'SR' ? 2000 : 1400;
   gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
   const at = (ms, fn) => gachaFxTimers.push(setTimeout(fn, ms));
-  at(dur * 0.35, () => { glow.style.background = color; hint.textContent = '…！？ ひかってる…！'; sfx('step'); });
-  if (rarity !== 'R') at(dur * 0.55, () => { glow.style.background = '#5b6b82'; hint.textContent = 'あれ…？ もどった…？'; });
-  at(dur * 0.72, () => { glow.style.background = color; egg.classList.add('frenzy'); hint.textContent = rarity === 'R' ? 'われる…！' : 'すごい色だ…！！'; sfx('alert'); });
-  at(dur, () => {
-    let altHit = false;
-    if (isNew) {
-      S.restored[d.id] = 0;
-      if (ALT_ART[d.id]) { S.variants[d.id] = Math.random() < ALT_RATE; altHit = ownAlt(d.id); }
-    } else {
-      S.restored[d.id] += dupBonus;
-    }
-    save();
-    const flash = document.getElementById('gfx-flash');
-    flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
-    egg.classList.add('burst');
-    sfx(rarity === 'SSR' ? 'win' : 'rare');
-    setTimeout(() => {
-      egg.classList.add('hidden');
-      hint.textContent = '';
-      const rr = document.getElementById('gfx-rarity');
-      rr.textContent = '【' + RARITY_NAME[rarity] + '】';
-      rr.style.background = color;
-      document.getElementById('gfx-art').innerHTML = dinoArtHTML(d.id, isNew ? altHit : ownAlt(d.id));
-      document.getElementById('gfx-name').textContent = d.name;
-      document.getElementById('gfx-sub').innerHTML = isNew
-        ? (altHit ? '✨ 色違い個体が 仲間になった！！' : '仲間になった！！')
-        : `かぶり！ 強化された（パワー +${dupBonus}）`;
-      reveal.classList.remove('hidden');
-      renderAll();
-    }, 320);
-    document.getElementById('egg-result').innerHTML =
-      `<span style="color:${color}">【${RARITY_NAME[rarity]}】${d.name}</span> ` + (isNew ? 'が仲間になった！' : `かぶり強化 +${dupBonus}`);
-    gachaBusy = false;
-  });
+  at(dur * 0.35, () => { glow.style.background = color; gachaGlowColor = color; hint.textContent = '…！？ ひかってる…！（タップでスキップ）'; sfx('step'); });
+  if (rarity !== 'R') at(dur * 0.55, () => { glow.style.background = '#5b6b82'; gachaGlowColor = '#9fb6cc'; hint.textContent = 'あれ…？ もどった…？'; });
+  at(dur * 0.72, () => { glow.style.background = color; gachaGlowColor = color; egg.classList.add('frenzy'); hint.textContent = rarity === 'R' ? 'われる…！' : 'すごい色だ…！！'; sfx('alert'); });
+  at(dur, gachaReveal);
 }
+
+function gachaReveal() {
+  if (!gachaPending) return;
+  const { d, rarity, isNew, dupBonus, color } = gachaPending;
+  gachaPending = null;
+  gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
+  clearInterval(gachaParticleTimer);
+
+  let altHit = false;
+  if (isNew) {
+    S.restored[d.id] = 0;
+    if (ALT_ART[d.id]) { S.variants[d.id] = Math.random() < ALT_RATE; altHit = ownAlt(d.id); }
+  } else {
+    S.restored[d.id] += dupBonus;
+  }
+  save();
+
+  const fx = document.getElementById('gacha-fx');
+  const egg = document.getElementById('gfx-egg');
+  const hint = document.getElementById('gfx-hint');
+  const reveal = document.getElementById('gfx-reveal');
+  const flash = document.getElementById('gfx-flash');
+  flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
+  egg.classList.add('burst');
+  sfx(rarity === 'SSR' ? 'win' : 'rare');
+  if (rarity !== 'R') { fx.classList.remove('gfx-shake'); void fx.offsetWidth; fx.classList.add('gfx-shake'); }
+  setTimeout(() => {
+    egg.classList.add('hidden');
+    hint.textContent = '';
+    const rr = document.getElementById('gfx-rarity');
+    rr.textContent = '【' + RARITY_NAME[rarity] + '】';
+    rr.style.background = color;
+    const card = document.getElementById('gfx-card');
+    card.style.borderColor = color;
+    card.style.boxShadow = `0 18px 44px rgba(0,0,0,.65), 0 0 26px ${color}66`;
+    card.classList.toggle('beams', rarity !== 'R');
+    card.style.transform = '';
+    document.getElementById('gfx-art').innerHTML = dinoArtHTML(d.id, isNew ? altHit : ownAlt(d.id));
+    document.getElementById('gfx-name').textContent = d.name;
+    document.getElementById('gfx-new').classList.toggle('hidden', !isNew);
+    document.getElementById('gfx-sub').innerHTML = isNew
+      ? (altHit ? '✨ 色違い個体が 仲間になった！！' : '仲間になった！！')
+      : `かぶり！ 強化された（パワー +${dupBonus}）`;
+    reveal.classList.remove('hidden');
+    renderAll();
+  }, 320);
+  document.getElementById('egg-result').innerHTML =
+    `<span style="color:${color}">【${RARITY_NAME[rarity]}】${d.name}</span> ` + (isNew ? 'が仲間になった！' : `かぶり強化 +${dupBonus}`);
+  gachaBusy = false;
+}
+
 function closeGachaFx() {
   gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
+  clearInterval(gachaParticleTimer);
+  gachaPending = null;
   document.getElementById('gacha-fx').classList.add('hidden');
   renderAll();
 }
+
+// 演出中タップでスキップ／リビール中はホロ反射とチルト
+document.getElementById('gacha-fx').addEventListener('click', () => { if (gachaPending) gachaReveal(); });
+document.getElementById('gacha-fx').addEventListener('pointermove', (e) => {
+  const card = document.getElementById('gfx-card');
+  const reveal = document.getElementById('gfx-reveal');
+  if (!card || reveal.classList.contains('hidden')) return;
+  const rect = card.getBoundingClientRect();
+  if (!rect.width) return;
+  const px = (e.clientX - rect.left) / rect.width;
+  const py = (e.clientY - rect.top) / rect.height;
+  card.style.setProperty('--mx', (px * 100) + '%');
+  card.style.setProperty('--my', (py * 100) + '%');
+  card.style.transform = `perspective(700px) rotateY(${(px - 0.5) * 13}deg) rotateX(${(0.5 - py) * 11}deg)`;
+});
+document.getElementById('gacha-fx').addEventListener('pointerleave', () => {
+  const card = document.getElementById('gfx-card');
+  if (card) card.style.transform = '';
+});
 
 function buyKey() {
   if (S.coins < 500) {
