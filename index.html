@@ -166,19 +166,48 @@
   .c-sys  { color: #c3cfdc; }
 
   /* ===== 探索タブ：フィールド全画面モード ===== */
-  body.explore-mode main { overflow: hidden; padding: 0 0 76px; }
+  body.explore-mode main { overflow: hidden; padding: 0; }
   body.explore-mode #tab-explore { height: 100%; animation: none; }
+  /* パネルは画面全体に広がる透明なオーバーレイ層（操作系だけが上に浮く） */
   body.explore-mode #tab-explore .panel {
-    height: 100%; display: flex; flex-direction: column;
-    margin: 0; border: none; border-radius: 0;
-    background: linear-gradient(180deg, rgba(20,26,36,.55), rgba(10,13,18,.55));
-    padding: 10px 12px 12px;
+    position: fixed; inset: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px; height: 100dvh;
+    display: flex; flex-direction: column;
+    margin: 0; border: none; border-radius: 0; background: none; box-shadow: none;
+    padding: 102px 12px 84px;
+    z-index: 6; pointer-events: none;
   }
+  body.explore-mode #tab-explore .panel > * { pointer-events: auto; }
+  body.explore-mode #tab-explore .panel > div:first-child {
+    position: relative; z-index: 1;
+    background: rgba(5,8,12,.45); border-radius: 10px; padding: 6px 10px;
+    backdrop-filter: blur(2px);
+  }
+  body.explore-mode .trail { position: relative; z-index: 1; }
+  /* フィールドは本当に全高さ */
   body.explore-mode .scene {
-    flex: 1 1 auto; height: auto; min-height: 0;
-    margin: 6px -12px 10px; border: none; border-radius: 0;
+    position: fixed; inset: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px; height: 100dvh;
+    margin: 0; border: none; border-radius: 0;
   }
-  body.explore-mode .stage-content { top: 46%; }
+  /* 結果メッセージは中央でなく下部のメッセージ窓に */
+  body.explore-mode .stage-content {
+    top: auto; bottom: 138px; left: 12px; right: 12px;
+    transform: none; width: auto;
+    display: flex; align-items: center; gap: 10px;
+    text-align: left; padding: 8px 12px;
+  }
+  body.explore-mode .stage-art { height: auto; flex: none; }
+  body.explore-mode .stage-art img { max-height: 44px; }
+  body.explore-mode .stage-art .dino-emoji { font-size: 34px; }
+  body.explore-mode .stage-text { margin-top: 0; flex: 1; }
+  /* 進むボタン：小さく、フィールドの上に浮かせる */
+  body.explore-mode #btn-explore, body.explore-mode #btn-boss {
+    position: relative; z-index: 1;
+    margin-top: auto; align-self: flex-end;
+    width: auto; padding: 10px 22px; border-radius: 999px;
+    font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.55);
+  }
 
   /* ===== ボタン ===== */
   .btn {
@@ -546,7 +575,7 @@
           </div>
         </div>
 
-        <button class="btn btn-explore" id="btn-explore" onclick="explore()">🔍 奥へ進む（スタミナ-5）</button>
+        <button class="btn btn-explore" id="btn-explore" onclick="explore()">進む</button>
         <button class="btn btn-boss hidden" id="btn-boss" onclick="openBossBattle()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 3.5 21 5 10 16H7v-3Z"/><path d="M6 14.5 9.5 18 7 20.5 4.5 18Z"/></svg> ボスに挑む！</button>
       </div>
     </section>
@@ -1992,9 +2021,9 @@ function updateExploreBtn() {
   const exBtn = document.getElementById('btn-explore');
   exBtn.classList.toggle('hidden', bossReady);
   exBtn.disabled = exploring || S.stamina < STAMINA_COST;
-  exBtn.innerHTML = exploring ? ICONS.paw + ' 探索中…'
-    : S.stamina < STAMINA_COST ? ICONS.moon + ' スタミナ回復待ち…'
-    : ICONS.compass + ' 奥へ進む（スタミナ-5）';
+  exBtn.innerHTML = exploring ? '探索中…'
+    : S.stamina < STAMINA_COST ? '回復待ち…'
+    : '進む';
 }
 
 function renderExplore() {
