@@ -573,6 +573,30 @@
   .gfx-art .dino-emoji { font-size: 110px; }
   .gfx-name { font-size: 24px; font-weight: 900; margin-top: 6px; text-shadow: 0 2px 8px #000; }
   .gfx-sub { font-size: 13px; font-weight: 900; color: #ffd24a; margin: 6px 0 14px; }
+
+  /* ===== ブラッシュアップ：出会い・孵化・フィニッシュ・時間帯 ===== */
+  .enc-sil img, .enc-sil .dino-emoji { filter: brightness(0) opacity(.88) drop-shadow(0 0 10px rgba(0,0,0,.8)); }
+  .enc-sil { display: inline-block; animation: encIn .3s ease-out; }
+  @keyframes encIn { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .hatch-egg { display: inline-block; animation: gfxWob .28s infinite; }
+  #finish-fx {
+    position: fixed; inset: 0; z-index: 95; display: flex; align-items: center; justify-content: center;
+    pointer-events: none; animation: finishBg .95s ease-out forwards;
+  }
+  #finish-fx.hidden { display: none; }
+  @keyframes finishBg { 0% { background: rgba(255,255,255,.9); } 25% { background: rgba(255,170,40,.35); } 100% { background: rgba(0,0,0,0); } }
+  .finish-text {
+    font-size: 46px; font-weight: 900; letter-spacing: .12em; color: #ffd24a;
+    text-shadow: 0 0 22px rgba(255,120,0,.9), 0 3px 0 #7a2d00, 0 6px 18px rgba(0,0,0,.6);
+    animation: finishPop .95s ease-out forwards;
+  }
+  @keyframes finishPop { 0% { transform: scale(.4); opacity: 0; } 18% { transform: scale(1.25); opacity: 1; } 30% { transform: scale(1); } 78% { opacity: 1; } 100% { transform: scale(1.05); opacity: 0; } }
+  body[data-phase="morning"] #scene3d { filter: sepia(.18) brightness(1.07); }
+  body[data-phase="evening"] #scene3d { filter: sepia(.35) brightness(.93) hue-rotate(-8deg); }
+  body[data-phase="night"] #scene3d { filter: brightness(.6) saturate(.8) hue-rotate(6deg); }
+  body[data-phase="morning"] .field-thumb { filter: brightness(1.06) sepia(.12); }
+  body[data-phase="evening"] .field-thumb { filter: sepia(.28) brightness(.93); }
+  body[data-phase="night"] .field-thumb { filter: brightness(.68) saturate(.85); }
   .bf-lunge { animation: bfLunge .35s ease; }
   @keyframes bfLunge { 0% { transform: none; } 40% { transform: translateY(-13px) scale(1.13); } 100% { transform: none; } }
   .bf-lunge-d { animation: bfLungeD .35s ease; }
@@ -882,6 +906,9 @@
     </div>
     <div class="gfx-hint" id="gfx-hint"></div>
   </div>
+
+  <!-- ===== フィニッシュ演出 ===== -->
+  <div id="finish-fx" class="hidden"><div class="finish-text">FINISH!!</div></div>
 
   <nav>
     <button id="nav-field" onclick="switchTab('field')"><span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>フィールド</button>
@@ -1871,13 +1898,23 @@ function explore() {
   showStage(bigIcon('paw', '#c3cfdc'), `<span class="c-sys">${pick(SUSPENSE)}<span class="dots"></span></span>`, '');
 
   const reveal = () => {
-    showStage(res.art, res.text, res.sub, res.rare);
-    if (res.badge) document.getElementById('badge-' + res.badge).classList.remove('hidden');
-    playResultFx(res);
-    exploring = false;
-    flushToasts();
-    renderAll();
-    if (res.hunter) setTimeout(openHunterBattle, 900);
+    const finish = () => {
+      showStage(res.art, res.text, res.sub, res.rare);
+      if (res.badge) document.getElementById('badge-' + res.badge).classList.remove('hidden');
+      playResultFx(res);
+      exploring = false;
+      flushToasts();
+      renderAll();
+      if (res.hunter) setTimeout(openHunterBattle, 900);
+    };
+    if (res.dinoId) {
+      // 出会い演出：まずシルエットで現れてから姿を見せる
+      showStage(`<span class="enc-sil">${res.art}</span>`, '<span class="c-rare">！？ なにか あらわれた！</span>', '');
+      sfx('alert');
+      setTimeout(finish, 650);
+    } else {
+      finish();
+    }
   };
   setTimeout(() => {
     if (res.rare) {
@@ -1996,11 +2033,19 @@ function dmgPop(dmg, big) {
   setTimeout(() => pop.remove(), 600);
 }
 function finishWin() {
+  if (battle) battle.finishing = true;
   sfx('win');
-  battle.opp.type === 'hunter' ? winHunterBattle() : winBossBattle();
+  flameBurst(document.getElementById('b-boss-art'), 210);
+  const fx = document.getElementById('finish-fx');
+  fx.classList.remove('hidden');
+  setTimeout(() => {
+    fx.classList.add('hidden');
+    if (!battle) return;
+    battle.opp.type === 'hunter' ? winHunterBattle() : winBossBattle();
+  }, 950);
 }
 function attack() {
-  if (!battle) return;
+  if (!battle || battle.finishing) return;
   const crit = Math.random() < 0.1;
   const dmg = Math.max(1, Math.round(effTeamPower(battle.opp.dtype) * (0.9 + Math.random() * 0.4) * (crit ? 2 : 1)));
   battle.hp -= dmg;
@@ -2027,7 +2072,7 @@ function attack() {
 const SKILL_NAMES = { meat: 'デス・クラッシュ', plant: 'グランド・クエイク', aqua: 'メガ・ウェーブ' };
 let skillBusy = false; // カットイン中は二重発動しない
 function skillAttack() {
-  if (!battle || battle.gauge < 100 || skillBusy) return;
+  if (!battle || battle.finishing || battle.gauge < 100 || skillBusy) return;
   skillBusy = true;
   battle.gauge = 0;
   renderBattle();
@@ -2130,6 +2175,7 @@ function loseBattle() {
   }, 1800);
 }
 function fleeBattle() {
+  if (battle && battle.finishing) return;
   if (battle && battle.opp.type === 'hunter') {
     const msg = stealFromPlayer(5, 10);
     save();
@@ -2153,13 +2199,20 @@ function restore(id) {
   S.restored[id] = 0;
   if (ALT_ART[id]) S.variants[id] = Math.random() < ALT_RATE; // 色違い抽選
   const isAlt = ownAlt(id);
-  sfx('restore');
-  toast(`🧪 <span class="c-rare">復元成功！【${RARITY_NAME[d.rarity]}】${d.name} が仲間になった！</span>${isAlt ? '<br>✨ <span class="c-rare">色違い個体だった！</span>' : ''}`);
-  showStage(dinoArtHTML(id, isAlt),
-    `<span class="c-rare">復元成功！<br>${d.name} が仲間になった！</span>${isAlt ? '<br>✨ 色違い個体！' : ''}`,
-    `パワー ${dinoPower(id)}`, true);
   save();
   renderAll();
+  // 孵化演出：卵が揺れて割れてから姿を見せる
+  showStage(`<span class="hatch-egg">${bigIcon('egg', '#ffe9b0')}</span>`,
+    '<span class="c-rare">ピシ…ピシピシ…！</span>', '復元中…');
+  sfx('dna');
+  setTimeout(() => {
+    sfx('restore');
+    toast(`🧪 <span class="c-rare">復元成功！【${RARITY_NAME[d.rarity]}】${d.name} が仲間になった！</span>${isAlt ? '<br>✨ <span class="c-rare">色違い個体だった！</span>' : ''}`);
+    showStage(dinoArtHTML(id, isAlt),
+      `<span class="c-rare">復元成功！<br>${d.name} が仲間になった！</span>${isAlt ? '<br>✨ 色違い個体！' : ''}`,
+      `パワー ${dinoPower(id)}`, true);
+    renderAll();
+  }, 950);
 }
 
 /* ========== 宝箱 ========== */
@@ -2510,7 +2563,12 @@ function renderChest() {
   document.getElementById('btn-gacha').disabled = S.tickets < 1;
 }
 
+function updatePhase() {
+  const h = new Date().getHours();
+  document.body.dataset.phase = (h >= 5 && h < 10) ? 'morning' : (h >= 10 && h < 16) ? 'day' : (h >= 16 && h < 19) ? 'evening' : 'night';
+}
 function renderAll() {
+  updatePhase();
   renderHeader();
   renderExplore();
   renderField();
