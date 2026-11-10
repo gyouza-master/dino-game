@@ -598,6 +598,16 @@ function imgFallback(img) {
   span.textContent = img.dataset.emoji;
   img.replaceWith(span);
 }
+/* 図鑑用アイコン（images/xxx-icon.png があれば優先、なければ全身画像→絵文字） */
+function dinoIconHTML(id) {
+  const d = DINO_MAP[id];
+  if (IMG_FAIL.has(id)) return dinoArtHTML(id);
+  return `<img src="images/${id}-icon.png" alt="${d.name}" data-id="${id}" data-emoji="${d.emoji}" onerror="iconFallback(this)">`;
+}
+function iconFallback(img) {
+  img.onerror = function() { imgFallback(this); };
+  img.src = `images/${img.dataset.id}.png`;
+}
 
 /* ========== セーブデータ ========== */
 let S = null;
@@ -1543,7 +1553,7 @@ function renderDex() {
     card.className = `dino-card r-${d.rarity}` + (owned ? '' : ' silhouette');
     let html = `<span class="rarity-tag rt-${d.rarity}">${d.rarity}</span>`;
     if (team.includes(d.id)) html += `<span class="team-mark">⭐</span>`;
-    html += `<div class="dino-art">${dinoArtHTML(d.id)}</div>`;
+    html += `<div class="dino-art">${dinoIconHTML(d.id)}</div>`;
     html += `<div class="dino-name">${owned ? d.name : '？？？'}</div>`;
     html += `<div class="dino-type">${TYPE_INFO[d.type].icon} ${TYPE_INFO[d.type].name}</div>`;
     if (owned) {
