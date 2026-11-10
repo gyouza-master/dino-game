@@ -514,14 +514,36 @@
   .bf-vs { text-align: center; color: #ffb300; font-weight: 900; font-size: 11px; letter-spacing: .35em; margin: 4px 0 6px; text-shadow: 0 0 8px rgba(255,179,0,.5); }
   .bf-team { display: flex; justify-content: center; gap: 5px; }
   .bf-member {
-    width: 19%; max-width: 64px; position: relative;
-    background: linear-gradient(180deg, rgba(38,48,64,.92), rgba(16,22,31,.92));
-    border: 1px solid #46536a; border-radius: 8px; padding: 4px 3px 3px;
+    width: 19%; max-width: 66px; aspect-ratio: 1 / 1; position: relative;
+    border: 2px solid var(--rc, #46536a); border-radius: 9px; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 80%, rgba(255,106,0,.42), rgba(90,20,0,.55) 55%, #160b06 100%);
+    box-shadow: 0 4px 10px rgba(0,0,0,.5);
   }
-  .bf-member.leader { border-color: #ffd700; box-shadow: 0 0 9px rgba(255,215,0,.4); }
-  .bf-member img { width: 100%; height: 46px; object-fit: contain; display: block; }
-  .bf-member .dino-emoji { font-size: 30px; text-align: center; line-height: 46px; }
-  .bf-member .bm-name { display: block; font-size: 8px; font-weight: 900; color: #cfe0ee; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bf-member.leader { border-color: #ffd700; animation: flameGlow .5s infinite alternate; }
+  .bf-member img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .bf-member .dino-emoji { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+  .bf-member .bm-name {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    padding: 8px 2px 2px; background: linear-gradient(transparent, rgba(0,0,0,.88) 55%);
+    font-size: 8px; font-weight: 900; color: #ffe9b0; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  @keyframes flameGlow {
+    from { box-shadow: 0 0 9px rgba(255,106,0,.45), 0 0 20px rgba(255,61,0,.22); }
+    to { box-shadow: 0 0 16px rgba(255,150,0,.85), 0 0 34px rgba(255,61,0,.5); }
+  }
+  .battlefield .boss-art {
+    border: 2px solid rgba(255,106,0,.65); border-radius: 10px;
+    background: radial-gradient(ellipse at 50% 82%, rgba(255,106,0,.3), rgba(40,8,0,.35) 60%, rgba(0,0,0,.25));
+    animation: bossfloat 1.5s infinite alternate, flameGlow .6s infinite alternate;
+  }
+  .flame-burst {
+    position: fixed; width: 120px; height: 120px; margin: -60px 0 0 -60px;
+    border-radius: 50%; pointer-events: none; z-index: 70;
+    background: radial-gradient(circle, #fff6c8 0%, #ffd24a 26%, #ff7b00 55%, rgba(255,61,0,0) 72%);
+    animation: flameBurst .38s ease-out forwards;
+  }
+  @keyframes flameBurst { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
   .bf-lunge { animation: bfLunge .35s ease; }
   @keyframes bfLunge { 0% { transform: none; } 40% { transform: translateY(-13px) scale(1.13); } 100% { transform: none; } }
   .bf-lunge-d { animation: bfLungeD .35s ease; }
@@ -1864,8 +1886,22 @@ function renderBattleTeam() {
   if (!el) return;
   el.innerHTML = teamIds().map((id, i) => {
     const d = DINO_MAP[id];
-    return `<div class="bf-member${i === 0 ? ' leader' : ''}">${dinoArtHTML(id, ownAlt(id))}<span class="bm-name">${i === 0 ? '⭐' : ''}${d.name}</span></div>`;
+    return `<div class="bf-member${i === 0 ? ' leader' : ''}" style="--rc:${CARD_RC[d.rarity]}">${dinoIconHTML(id)}<span class="bm-name">${i === 0 ? '⭐' : ''}${d.name}</span></div>`;
   }).join('');
+}
+function flameBurst(anchor, size) {
+  if (!anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  const b = document.createElement('div');
+  b.className = 'flame-burst';
+  if (size) {
+    b.style.width = size + 'px'; b.style.height = size + 'px';
+    b.style.margin = (-size / 2) + 'px 0 0 ' + (-size / 2) + 'px';
+  }
+  b.style.left = (rect.left + rect.width / 2) + 'px';
+  b.style.top = (rect.top + rect.height / 2) + 'px';
+  document.body.appendChild(b);
+  setTimeout(() => b.remove(), 420);
 }
 function bfAnim(el, cls) {
   if (!el) return;
@@ -1914,6 +1950,7 @@ function attack() {
   shakeBattle(crit);
   dmgPop(dmg, crit);
   bfAnim(document.querySelector('#b-team .bf-member'), 'bf-lunge');
+  flameBurst(document.getElementById('b-boss-art'));
 
   if (battle.hp <= 0) { finishWin(); return; }
 
@@ -1921,6 +1958,7 @@ function attack() {
   battle.php -= oppDmg;
   bfAnim(document.getElementById('b-boss-art'), 'bf-lunge-d');
   bfAnim(document.getElementById('b-team'), 'bf-hit');
+  flameBurst(document.getElementById('b-team'), 90);
   document.getElementById('b-log').textContent =
     (crit ? `💥 クリティカル！${dmg}ダメージ！！` : `${dmg}ダメージ！`) +
     ` ${battle.opp.name}の反撃で ${oppDmg} くらった！`;
@@ -1954,6 +1992,7 @@ function skillAttack() {
     const dmg = Math.round(effTeamPower(battle.opp.dtype) * 3);
     battle.hp -= dmg;
     dmgPop(dmg, true);
+    flameBurst(document.getElementById('b-boss-art'), 190);
     document.getElementById('b-log').textContent = `🔥 ひっさつ発動！！ ${dmg}の大ダメージ！！`;
     if (battle.hp <= 0) { finishWin(); return; }
     renderBattle(); // ひっさつは反撃を受けない
