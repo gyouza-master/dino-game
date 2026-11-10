@@ -19,7 +19,7 @@
   #app {
     width: 100%;
     max-width: 480px;
-    min-height: 100dvh;
+    height: 100dvh;
     background:
       radial-gradient(ellipse at 50% -10%, rgba(255,106,0,.12), transparent 55%),
       linear-gradient(180deg, #11151c 0%, #0a0c10 45%, #06070a 100%);
@@ -164,6 +164,21 @@
   .c-rare { color: #ffb300; text-shadow: 0 0 10px rgba(255,106,0,.9), 0 2px 3px #000; }
   .c-bad  { color: #ff6b81; text-shadow: 0 0 8px rgba(255,61,80,.7), 0 2px 3px #000; }
   .c-sys  { color: #c3cfdc; }
+
+  /* ===== 探索タブ：フィールド全画面モード ===== */
+  body.explore-mode main { overflow: hidden; padding: 0 0 76px; }
+  body.explore-mode #tab-explore { height: 100%; animation: none; }
+  body.explore-mode #tab-explore .panel {
+    height: 100%; display: flex; flex-direction: column;
+    margin: 0; border: none; border-radius: 0;
+    background: linear-gradient(180deg, rgba(20,26,36,.55), rgba(10,13,18,.55));
+    padding: 10px 12px 12px;
+  }
+  body.explore-mode .scene {
+    flex: 1 1 auto; height: auto; min-height: 0;
+    margin: 6px -12px 10px; border: none; border-radius: 0;
+  }
+  body.explore-mode .stage-content { top: 46%; }
 
   /* ===== ボタン ===== */
   .btn {
@@ -1893,6 +1908,7 @@ function resetGame() {
 
 /* ========== タブ ========== */
 function switchTab(tab) {
+  document.body.classList.toggle('explore-mode', tab === 'explore');
   ['field', 'explore', 'dex', 'chest'].forEach(t => {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
     document.getElementById('nav-' + t).classList.toggle('active', t === tab);
@@ -1900,6 +1916,7 @@ function switchTab(tab) {
   if (tab === 'dex') document.getElementById('badge-dex').classList.add('hidden');
   if (tab === 'chest') document.getElementById('badge-chest').classList.add('hidden');
   renderAll();
+  if (tab === 'explore') requestAnimationFrame(resize3D);
 }
 
 /* ========== フィールド選択 ========== */
@@ -2047,6 +2064,7 @@ function renderAll() {
 
 /* ========== 起動 ========== */
 load();
+document.body.classList.add('explore-mode');
 document.getElementById('egg-emoji').innerHTML = ICONS.egg;
 document.getElementById('chest-emoji').innerHTML = ICONS.chest;
 tickStamina();
