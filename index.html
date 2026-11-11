@@ -1816,6 +1816,7 @@ function init3D() {
            rays: null, mists: null, flies: null, path: null,
            camZ: 0, targetZ: 0, t: 0 };
     resize3D();
+    preloadTreeTex(); // 木の切り抜き画像があれば読み込んでおく
     window.addEventListener('resize', resize3D);
     requestAnimationFrame(loop3D);
   } catch (e) { T3 = null; }
@@ -1866,7 +1867,7 @@ function makeTree(cfg) {
     const blobs = 3 + (Math.random() < 0.5 ? 1 : 0);
     for (let i = 0; i < blobs; i++) {
       const r = 1.1 + Math.random() * 0.9;
-      const b = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 0)), MAT(leafColor(cfg)));
+      const b = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), MAT(leafColor(cfg)));
       b.scale.set(r, r * 0.78, r);
       b.position.set((Math.random() - 0.5) * 1.3, trunkH + 0.5 + Math.random() * 1.1, (Math.random() - 0.5) * 1.3);
       b.rotation.y = Math.random() * 3;
@@ -1922,7 +1923,7 @@ function makeProp(cfg) {
   // 下草・シダ・茂み・倒木などの小物
   const r = Math.random();
   if (r < 0.34) { // 茂み
-    const b = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 0)), MAT(leafColor(cfg)));
+    const b = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), MAT(leafColor(cfg)));
     b.scale.set(0.7 + Math.random() * 0.7, 0.5 + Math.random() * 0.4, 0.7 + Math.random() * 0.7);
     b.position.y = 0.35;
     return b;
@@ -2007,6 +2008,53 @@ function makeMotes(cfg) {
 }
 
 /* ===== リアル化パーツ：本物テクスチャの地面・巨木・木漏れ日・霧・蝶 ===== */
+
+/* 本物の木のビルボード（images/tex/tree*.png 等の切り抜き画像があれば板に貼って使う） */
+const TREE_TEX_NAMES = ['tree1', 'tree2', 'tree3'];
+const UNDER_TEX_NAMES = ['fern1', 'bush1'];
+const _treeTex = {};
+function preloadTreeTex() {
+  const all = TREE_TEX_NAMES.concat(UNDER_TEX_NAMES);
+  let done = 0;
+  const step = () => {
+    if (++done === all.length && Object.keys(_treeTex).length && worldArea >= 0) {
+      worldArea = -1; setupScenery(); // 画像が読めたら世界を作り直して差し替え
+    }
+  };
+  all.forEach(n => {
+    new THREE.TextureLoader().load(`images/tex/${n}.png`,
+      t => { t.encoding = THREE.sRGBEncoding; _treeTex[n] = t; step(); },
+      undefined, step);
+  });
+}
+const _bbMats = {};
+function billboardMat(n) {
+  if (!_bbMats[n]) {
+    _bbMats[n] = new THREE.MeshLambertMaterial({
+      map: _treeTex[n], alphaTest: 0.45, side: THREE.DoubleSide });
+  }
+  return _bbMats[n];
+}
+function makeBillboardPlant(names, hMin, hMax) {
+  const avail = names.filter(n => _treeTex[n]);
+  const n = pick(avail);
+  const t = _treeTex[n];
+  const g = new THREE.Group();
+  const h = hMin + Math.random() * (hMax - hMin);
+  const w = h * (t.image.width / t.image.height);
+  const geo = GEO('bbplane', () => new THREE.PlaneGeometry(1, 1));
+  for (let i = 0; i < 2; i++) { // 2枚を十字に交差させる
+    const p = new THREE.Mesh(geo, billboardMat(n));
+    p.scale.set(w, h, 1);
+    p.position.y = h / 2;
+    p.rotation.y = i * Math.PI / 2 + (Math.random() - 0.5) * 0.4;
+    p.userData.noShadow = true; // 板の影（四角）は落とさない
+    g.add(p);
+  }
+  g.add(shadowBlob(Math.min(2.2, h * 0.22)));
+  g.rotation.y = Math.random() * Math.PI;
+  return g;
+}
 function groundMaterial(cfg) {
   if (!cfg.tex) return new THREE.MeshLambertMaterial({ map: groundTexture(cfg) });
   // 写真由来のPBRテクスチャ（読み込み完了までは手描きテクスチャでつなぐ）
@@ -2053,7 +2101,7 @@ function makeGiantTree(cfg) {
   }
   for (let i = 0; i < 4; i++) { // 高い樹冠
     const r = 2.2 + Math.random() * 1.6;
-    const bl = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 0)), MAT(leafColor(cfg)));
+    const bl = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), MAT(leafColor(cfg)));
     bl.scale.set(r, r * 0.6, r);
     bl.position.set((Math.random() - 0.5) * 3, h + (Math.random() - 0.3) * 1.6, (Math.random() - 0.5) * 3);
     g.add(bl);
@@ -2134,22 +2182,28 @@ function build3DWorld(ai) {
   if (cfg.tex) { T3.path = makePathStrip(); group.add(T3.path); }
 
   T3.trees = [];
+  const hasTreeTex = cfg.jungle && TREE_TEX_NAMES.some(n => _treeTex[n]);
+  const hasUnderTex = cfg.jungle && UNDER_TEX_NAMES.some(n => _treeTex[n]);
   for (let i = 0; i < cfg.count; i++) {
-    const obj = cfg.obj === 'tree' ? makeTree(cfg) : makeRock(cfg);
+    const obj = hasTreeTex && Math.random() < 0.65
+      ? makeBillboardPlant(TREE_TEX_NAMES, 5.5, 10)   // 本物の木の切り抜き
+      : (cfg.obj === 'tree' ? makeTree(cfg) : makeRock(cfg));
     scatter(obj, T3.camZ, false);
     T3.trees.push(obj);
     group.add(obj);
   }
   // 下草や小物を散らして地面を埋める
   for (let i = 0; i < (cfg.props || 0); i++) {
-    const p = makeProp(cfg);
+    const p = hasUnderTex && Math.random() < 0.5
+      ? makeBillboardPlant(UNDER_TEX_NAMES, 0.8, 1.7)
+      : makeProp(cfg);
     scatter(p, T3.camZ, true);
     T3.trees.push(p);
     group.add(p);
   }
   // 遠景のシルエット（森の壁）
   for (let i = 0; i < 14; i++) {
-    const far = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 0)), MAT(cfg.leaf3));
+    const far = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), MAT(cfg.leaf3));
     const s = 5 + Math.random() * 5;
     far.scale.set(s, s * 1.15, s);
     const side = i % 2 ? -1 : 1;
@@ -2203,7 +2257,7 @@ function build3DWorld(ai) {
   }
   // 木や岩は影を落とす（透明マテリアルと地面は除外）
   group.traverse(o => {
-    if (o.isMesh && o.material && !o.material.transparent && o !== ground) o.castShadow = true;
+    if (o.isMesh && o.material && !o.material.transparent && !o.userData.noShadow && o !== ground) o.castShadow = true;
   });
 
   // 漂う光の粒
