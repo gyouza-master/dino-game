@@ -620,6 +620,123 @@
     40% { transform: translate(5px, -3px); } 60% { transform: translate(-4px, -2px); } 80% { transform: translate(4px, 2px); }
   }
 
+  /* ===== ガチャ演出：隔離ゲート（開く前のワンクッション） ===== */
+  .gfx-gate { position: absolute; inset: 0; z-index: 4; }
+  .gfx-gate.hidden { display: none; }
+  .gfx-gate.rumble { animation: gateRumble .1s infinite; }
+  @keyframes gateRumble { 0%,100% { transform: translate(0,0); } 25% { transform: translate(1.5px,-1px); } 75% { transform: translate(-1.5px,1.5px); } }
+  .gate-door {
+    position: absolute; top: 0; bottom: 0; width: 50.5%;
+    background:
+      radial-gradient(circle at 24px 26px, rgba(255,255,255,.07) 2px, transparent 3px) 0 0/52px 58px,
+      linear-gradient(180deg, transparent 17%, #39465c 17%, #222c3c 20.5%, transparent 20.5%),
+      linear-gradient(180deg, transparent 76%, #39465c 76%, #222c3c 79.5%, transparent 79.5%),
+      linear-gradient(100deg, #2b3546 0%, #1a2230 45%, #222c3c 70%, #171e2a 100%);
+    box-shadow: inset 0 0 60px rgba(0,0,0,.55);
+    transition: transform 1s cubic-bezier(.75,0,.25,1);
+    will-change: transform;
+  }
+  .gate-door.left { left: 0; }
+  .gate-door.right { right: 0; }
+  .gate-door::before {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 30px;
+    background: repeating-linear-gradient(45deg, #e8b33a 0 13px, #171c26 13px 26px);
+    box-shadow: inset 0 0 12px rgba(0,0,0,.65);
+    filter: brightness(.92);
+  }
+  .gate-door.left::before { right: 0; }
+  .gate-door.right::before { left: 0; }
+  .gfx-gate.open .gate-door.left { transform: translateX(-104%); }
+  .gfx-gate.open .gate-door.right { transform: translateX(104%); }
+  .gate-seam {
+    position: absolute; top: 0; bottom: 0; left: 50%; width: 4px;
+    transform: translateX(-50%);
+    background: #7ef0ff; box-shadow: 0 0 18px #7ef0ff, 0 0 44px rgba(126,240,255,.6);
+    opacity: .18; transition: opacity .3s;
+  }
+  .gfx-gate.rumble .gate-seam { animation: seamPulse .22s infinite alternate; }
+  @keyframes seamPulse { from { opacity: .3; } to { opacity: .95; } }
+  .gfx-gate.open .gate-seam { opacity: 0; }
+  .gate-label {
+    position: absolute; top: 13%; left: 0; right: 0; z-index: 1;
+    text-align: center; font-size: 11px; font-weight: 900;
+    letter-spacing: .35em; color: #6b7f99; text-shadow: 0 1px 3px #000;
+    transition: opacity .4s;
+  }
+  .gfx-gate.open .gate-label { opacity: 0; }
+
+  /* ===== DNA解析ラボ ===== */
+  #dna-lab {
+    position: fixed; inset: 0; z-index: 85; overflow: hidden;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(0,120,140,.18), transparent 60%),
+      linear-gradient(180deg, #06121a 0%, #030a10 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #dna-lab.hidden { display: none; }
+  .lab-grid {
+    position: absolute; inset: 0; opacity: .25;
+    background:
+      linear-gradient(rgba(0,217,255,.08) 1px, transparent 1px) 0 0/100% 44px,
+      linear-gradient(90deg, rgba(0,217,255,.06) 1px, transparent 1px) 0 0/44px 100%;
+  }
+  .lab-sil {
+    position: absolute; left: 50%; top: 40%; transform: translate(-50%,-50%);
+    opacity: .9; pointer-events: none;
+  }
+  .lab-sil img { max-height: 46vh; max-width: 86vw; filter: brightness(0) opacity(.5) drop-shadow(0 0 20px rgba(0,217,255,.25)); }
+  .lab-sil .dino-emoji { font-size: 150px; filter: brightness(0) opacity(.5); }
+  .lab-sil.done img, .lab-sil.done .dino-emoji { filter: brightness(0) opacity(.75) drop-shadow(0 0 30px rgba(0,217,255,.8)); }
+  .lab-helix {
+    position: absolute; left: 50%; top: 40%; transform: translate(-50%,-50%);
+    width: 150px; height: 54vh; pointer-events: none;
+  }
+  .helix-dim, .helix-fill { position: absolute; inset: 0; }
+  .helix-dim svg, .helix-fill svg { width: 100%; height: 100%; }
+  .helix-dim { color: #1b2a3a; }
+  .helix-fill {
+    color: #00d9ff;
+    filter: drop-shadow(0 0 8px rgba(0,217,255,.8));
+    clip-path: inset(calc(100% - var(--p, 0%)) 0 0 0);
+    transition: clip-path 1.4s cubic-bezier(.3,.7,.3,1);
+  }
+  .lab-marks {
+    position: absolute; left: 50%; top: 13%; transform: translateX(-50%);
+    width: min(78vw, 300px); height: 54vh; pointer-events: none;
+  }
+  .lab-mark {
+    position: absolute; left: 0; right: 0; height: 1px;
+    border-top: 1px dashed rgba(0,217,255,.35);
+  }
+  .lab-mark span {
+    position: absolute; right: -6px; top: -18px;
+    font-size: 10px; font-weight: 900; color: #3fb6cc;
+  }
+  .lab-bubbles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .lab-bubble {
+    position: absolute; bottom: -20px; border-radius: 50%;
+    border: 1px solid rgba(0,217,255,.4); background: rgba(0,217,255,.07);
+    animation: bubbleUp linear infinite;
+  }
+  @keyframes bubbleUp { to { transform: translateY(-110vh); opacity: 0; } }
+  .lab-info {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 20px max(20px, env(safe-area-inset-bottom));
+    margin: 0 auto; max-width: 480px;
+    background: linear-gradient(180deg, transparent, rgba(3,10,16,.92) 34%);
+    text-align: center;
+  }
+  .lab-title { font-size: 10px; font-weight: 900; letter-spacing: .3em; color: #3fb6cc; }
+  .lab-title span { letter-spacing: .1em; color: #6b7f99; }
+  .lab-name { font-size: 20px; font-weight: 900; margin-top: 4px; text-shadow: 0 2px 6px #000; }
+  .lab-pct { font-size: 14px; font-weight: 900; color: #00d9ff; text-shadow: 0 0 10px rgba(0,217,255,.7); margin: 2px 0 10px; }
+  .btn-restore-big {
+    padding: 14px; font-size: 17px;
+    background: linear-gradient(180deg, #00d9ff, #0077ff);
+    border: 2px solid #a8efff; border-bottom-width: 4px;
+    animation: pulse-cyan 1s infinite alternate;
+  }
+
   /* ===== ブラッシュアップ：出会い・孵化・フィニッシュ・時間帯 ===== */
   .enc-sil img, .enc-sil .dino-emoji { filter: brightness(0) opacity(.88) drop-shadow(0 0 10px rgba(0,0,0,.8)); }
   .enc-sil { display: inline-block; animation: encIn .3s ease-out; }
@@ -999,6 +1116,12 @@
   <div id="gacha-fx" class="hidden">
     <div class="gfx-glow" id="gfx-glow"></div>
     <div class="gfx-egg" id="gfx-egg"></div>
+    <div class="gfx-gate hidden" id="gfx-gate">
+      <div class="gate-label">DNA CONTAINMENT GATE</div>
+      <div class="gate-door left"></div>
+      <div class="gate-door right"></div>
+      <div class="gate-seam"></div>
+    </div>
     <div class="gfx-flash" id="gfx-flash"></div>
     <div class="gfx-reveal hidden" id="gfx-reveal">
       <div class="gfx-rarity" id="gfx-rarity"></div>
@@ -1017,6 +1140,30 @@
 
   <!-- ===== フィニッシュ演出 ===== -->
   <div id="finish-fx" class="hidden"><div class="finish-text">FINISH!!</div></div>
+
+  <!-- ===== DNA解析ラボ ===== -->
+  <div id="dna-lab" class="hidden" onclick="closeDnaLab()">
+    <div class="lab-grid"></div>
+    <div class="lab-sil" id="lab-sil"></div>
+    <div class="lab-helix" id="lab-helix">
+      <div class="helix-dim" id="helix-dim"></div>
+      <div class="helix-fill" id="helix-fill"></div>
+    </div>
+    <div class="lab-marks">
+      <div class="lab-mark" style="bottom:100%"><span>100%</span></div>
+      <div class="lab-mark" style="bottom:75%"><span>75%</span></div>
+      <div class="lab-mark" style="bottom:50%"><span>50%</span></div>
+      <div class="lab-mark" style="bottom:25%"><span>25%</span></div>
+    </div>
+    <div class="lab-bubbles" id="lab-bubbles"></div>
+    <div class="lab-info" onclick="event.stopPropagation()">
+      <div class="lab-title">DNA ANALYSIS <span>— 解析ラボ</span></div>
+      <div class="lab-name" id="lab-name"></div>
+      <div class="lab-pct" id="lab-pct"></div>
+      <button class="btn btn-restore-big hidden" id="lab-restore">🧪 復元する！</button>
+      <button class="btn btn-sub" style="margin-top:8px" onclick="closeDnaLab()">とじる</button>
+    </div>
+  </div>
 
   <nav>
     <button id="nav-field" onclick="switchTab('field')"><span class="nav-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>フィールド</button>
@@ -1407,6 +1554,7 @@ function sfx(name) {
     case 'restore': [784, 988, 1175, 1568].forEach((f, i) => tone(f, .2, { type:'sine', vol:.11, delay: i * .08 })); break;
     case 'levelup': [659, 784, 988, 1319].forEach((f, i) => tone(f, .16, { vol:.09, delay: i * .06 })); break;
     case 'alert':   tone(196, .15, { type:'sawtooth', vol:.1 }); tone(196, .15, { type:'sawtooth', vol:.1, delay:.2 }); break;
+    case 'gate':    tone(60, .9, { type:'sawtooth', vol:.12, slide: 30 }); noiseBurst(.7, .08, .1); noiseBurst(.25, .12, .75); break;
   }
 }
 function toggleMute() {
@@ -2427,26 +2575,40 @@ function rollGacha() {
   const glow = document.getElementById('gfx-glow');
   const hint = document.getElementById('gfx-hint');
   const reveal = document.getElementById('gfx-reveal');
+  const gate = document.getElementById('gfx-gate');
   fx.classList.remove('hidden', 'gfx-shake');
   reveal.classList.add('hidden');
-  egg.classList.remove('hidden', 'burst', 'frenzy');
-  egg.classList.add('wob');
+  egg.classList.remove('burst', 'frenzy');
+  egg.classList.add('wob', 'hidden'); // ゲートが開くまで卵は見せない
   egg.innerHTML = ICONS.egg;
-  glow.style.background = '#5b6b82';
+  glow.style.background = '#223044';
   gachaGlowColor = '#9fb6cc';
-  hint.textContent = '…なにかが うごいた！（タップでスキップ）';
 
-  // 粒子が卵へ集まってくる
-  clearInterval(gachaParticleTimer);
-  gachaParticleTimer = setInterval(spawnGachaParticle, 110);
-
-  const dur = rarity === 'SSR' ? 2600 : rarity === 'SR' ? 2000 : 1400;
+  // ===== 第1幕：隔離ゲートが開く =====
+  const GATE_MS = 1750;
+  gate.classList.remove('hidden', 'open', 'rumble');
+  hint.textContent = '隔離ゲート 起動…（タップでスキップ）';
+  sfx('alert');
   gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
   const at = (ms, fn) => gachaFxTimers.push(setTimeout(fn, ms));
-  at(dur * 0.35, () => { glow.style.background = color; gachaGlowColor = color; hint.textContent = '…！？ ひかってる…！（タップでスキップ）'; sfx('step'); });
-  if (rarity !== 'R') at(dur * 0.55, () => { glow.style.background = '#5b6b82'; gachaGlowColor = '#9fb6cc'; hint.textContent = 'あれ…？ もどった…？'; });
-  at(dur * 0.72, () => { glow.style.background = color; gachaGlowColor = color; egg.classList.add('frenzy'); hint.textContent = rarity === 'R' ? 'われる…！' : 'すごい色だ…！！'; sfx('alert'); });
-  at(dur, gachaReveal);
+  at(300, () => { gate.classList.add('rumble'); hint.textContent = 'ゴゴゴゴ…'; });
+  at(850, () => { gate.classList.remove('rumble'); gate.classList.add('open'); sfx('gate'); hint.textContent = 'ゲート 開放…！'; });
+  at(GATE_MS, () => {
+    gate.classList.add('hidden');
+    egg.classList.remove('hidden');
+    glow.style.background = '#5b6b82';
+    hint.textContent = '…なにかが うごいた！（タップでスキップ）';
+    // 粒子が卵へ集まってくる
+    clearInterval(gachaParticleTimer);
+    gachaParticleTimer = setInterval(spawnGachaParticle, 110);
+  });
+
+  // ===== 第2幕：卵の煽り→リビール =====
+  const dur = rarity === 'SSR' ? 2600 : rarity === 'SR' ? 2000 : 1400;
+  at(GATE_MS + dur * 0.35, () => { glow.style.background = color; gachaGlowColor = color; hint.textContent = '…！？ ひかってる…！（タップでスキップ）'; sfx('step'); });
+  if (rarity !== 'R') at(GATE_MS + dur * 0.55, () => { glow.style.background = '#5b6b82'; gachaGlowColor = '#9fb6cc'; hint.textContent = 'あれ…？ もどった…？'; });
+  at(GATE_MS + dur * 0.72, () => { glow.style.background = color; gachaGlowColor = color; egg.classList.add('frenzy'); hint.textContent = rarity === 'R' ? 'われる…！' : 'すごい色だ…！！'; sfx('alert'); });
+  at(GATE_MS + dur, gachaReveal);
 }
 
 function gachaReveal() {
@@ -2470,6 +2632,8 @@ function gachaReveal() {
   const hint = document.getElementById('gfx-hint');
   const reveal = document.getElementById('gfx-reveal');
   const flash = document.getElementById('gfx-flash');
+  document.getElementById('gfx-gate').classList.add('hidden'); // ゲート中にスキップされた場合も閉じる
+  egg.classList.remove('hidden');
   flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
   egg.classList.add('burst');
   sfx(rarity === 'SSR' ? 'win' : 'rare');
@@ -2503,8 +2667,72 @@ function closeGachaFx() {
   gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
   clearInterval(gachaParticleTimer);
   gachaPending = null;
+  document.getElementById('gfx-gate').classList.add('hidden');
   document.getElementById('gacha-fx').classList.add('hidden');
   renderAll();
+}
+
+/* ========== DNA解析ラボ（解析率がらせんに溜まっていく画面） ========== */
+let labDinoId = null;
+function helixSVG() {
+  // 2本のらせん＋塩基対の横棒をSVGで生成（色はCSSのcurrentColor）
+  const W = 150, H = 800, AMP = 52, PERIOD = 200, STEP = 8;
+  let s1 = '', s2 = '';
+  const px = (y, phase) => (W / 2 + AMP * Math.sin((y / PERIOD) * Math.PI * 2 + phase)).toFixed(1);
+  for (let y = 0; y <= H; y += STEP) {
+    const cmd = y === 0 ? 'M' : 'L';
+    s1 += `${cmd}${px(y, 0)} ${y} `;
+    s2 += `${cmd}${px(y, Math.PI)} ${y} `;
+  }
+  let rungs = '';
+  for (let y = 14; y < H; y += 28) {
+    rungs += `<line x1="${px(y, 0)}" y1="${y}" x2="${px(y, Math.PI)}" y2="${y}" stroke="currentColor" stroke-width="3.5" opacity=".6"/>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
+    `<path d="${s1}" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>` +
+    `<path d="${s2}" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" opacity=".8"/>` +
+    rungs + `</svg>`;
+}
+function openDnaLab(id) {
+  labDinoId = id;
+  const d = DINO_MAP[id];
+  const pct = Math.min(100, S.dna[id] || 0);
+  const lab = document.getElementById('dna-lab');
+  const svg = helixSVG();
+  document.getElementById('helix-dim').innerHTML = svg;
+  document.getElementById('helix-fill').innerHTML = svg;
+  document.getElementById('lab-sil').innerHTML = dinoArtHTML(id);
+  document.getElementById('lab-sil').classList.toggle('done', pct >= 100);
+  document.getElementById('lab-name').textContent = `【${RARITY_NAME[d.rarity]}】${pct >= 30 ? d.name : '？？？？？'}`;
+  document.getElementById('lab-pct').textContent = `DNA解析率 ${pct}%`;
+  const btn = document.getElementById('lab-restore');
+  btn.classList.toggle('hidden', pct < 100);
+  btn.onclick = (e) => { e.stopPropagation(); closeDnaLab(); switchTab('explore'); restore(id); };
+  // 泡をランダム生成
+  const bubbles = document.getElementById('lab-bubbles');
+  bubbles.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const b = document.createElement('div');
+    b.className = 'lab-bubble';
+    const size = rand(4, 14);
+    b.style.width = b.style.height = size + 'px';
+    b.style.left = rand(8, 92) + '%';
+    b.style.animationDuration = rand(5, 11) + 's';
+    b.style.animationDelay = (Math.random() * 6) + 's';
+    bubbles.appendChild(b);
+  }
+  lab.classList.remove('hidden');
+  // 0%から現在値までらせんが満ちていく
+  const fill = document.getElementById('helix-fill');
+  fill.style.setProperty('--p', '0%');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fill.style.setProperty('--p', pct + '%');
+  }));
+  sfx('dna');
+}
+function closeDnaLab() {
+  labDinoId = null;
+  document.getElementById('dna-lab').classList.add('hidden');
 }
 
 // 演出中タップでスキップ／リビール中はホロ反射とチルト
@@ -2744,7 +2972,9 @@ function renderDex() {
     } else {
       html += `<div class="dna-mini">🧬 解析 ${have}%</div>`;
       html += `<div class="mini-bar"><div style="width:${have}%"></div></div>`;
-      if (have >= 100) html += `<button class="btn-restore" onclick="restore('${d.id}')">復元する！</button>`;
+      if (have >= 100) html += `<button class="btn-restore" onclick="event.stopPropagation(); restore('${d.id}')">復元する！</button>`;
+      card.onclick = () => { sfx('dna'); openDnaLab(d.id); }; // タップでDNA解析ラボへ
+      card.style.cursor = 'pointer';
     }
     card.innerHTML = html;
     grid.appendChild(card);
