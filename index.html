@@ -2365,21 +2365,26 @@ function advance3D() {
   if (T3) T3.targetZ -= 9; // タップ1回ぶん奥へ
 }
 
-// DNA発見時：その野生恐竜が目の前をサッと横切る
+// DNA発見時：木立の間に黒い影の恐竜が現れ、ゆっくり身じろぎして霧に溶ける「気配」演出
 function spawnCrossing(id) {
   if (!T3) return;
   if (T3.crossing) { T3.scn.remove(T3.crossing.s); T3.crossing = null; }
-  const mat = new THREE.SpriteMaterial({ map: emojiTexture(DINO_MAP[id].emoji), transparent: true });
+  const mat = new THREE.SpriteMaterial({
+    map: emojiTexture(DINO_MAP[id].emoji),
+    transparent: true, opacity: 0, color: 0x070c08, // 真っ黒のシルエット
+  });
   if (!IMG_FAIL.has(id)) {
     new THREE.TextureLoader().load(artFile(id, wildAlt(id)),
       tex => { mat.map = tex; mat.needsUpdate = true; }, undefined, () => {});
   }
   const s = new THREE.Sprite(mat);
-  s.scale.set(3, 3, 1);
-  const dir = Math.random() < 0.5 ? 1 : -1;
-  s.position.set(-dir * 10, 1.6, T3.camZ - 9);
+  const size = 2.2 + Math.random() * 1.5;
+  const dir = Math.random() < 0.5 ? 1 : -1;      // 体の向き（歩く方向）
+  s.scale.set(size * dir, size, 1);
+  const side = Math.random() < 0.5 ? 1 : -1;
+  s.position.set(side * (4.5 + Math.random() * 3.5), size * 0.45, T3.camZ - (13 + Math.random() * 9));
   T3.scn.add(s);
-  T3.crossing = { s, dir };
+  T3.crossing = { s, dir, t: 0, life: 4.8 + Math.random() * 1.6, baseY: size * 0.45 };
 }
 
 function loop3D() {
@@ -2469,12 +2474,19 @@ function loop3D() {
     if (awake) T3.boss.position.y = 4 + Math.sin(T3.t * 4) * 0.3;
   }
 
-  // 野生恐竜の横切り
+  // 野生恐竜の気配：ふわっと現れ、そっと歩き、霧に溶けて消える
   if (T3.crossing) {
     const c = T3.crossing;
-    c.s.position.x += c.dir * 0.16;
-    c.s.position.y = 1.6 + Math.abs(Math.sin(T3.t * 10)) * 0.25;
-    if (Math.abs(c.s.position.x) > 11) { T3.scn.remove(c.s); T3.crossing = null; }
+    c.t += 0.016;
+    const ss = x => x * x * (3 - 2 * x); // なめらかな補間
+    const fadeIn = ss(Math.min(1, c.t / 1.1));
+    const fadeOut = ss(Math.min(1, Math.max(0, (c.life - c.t) / 1.4)));
+    c.s.material.opacity = 0.92 * fadeIn * fadeOut;
+    c.s.position.x += c.dir * 0.008;                              // ゆっくり歩く
+    c.s.position.z += 0.0045;                                     // わずかにこちらへ
+    c.s.position.y = c.baseY + Math.sin(c.t * 1.7) * 0.045;       // 呼吸のような上下
+    c.s.material.rotation = Math.sin(c.t * 2.3) * 0.04;           // 体のゆらぎ
+    if (c.t >= c.life) { T3.scn.remove(c.s); T3.crossing = null; }
   }
 
   if (T3.composer) T3.composer.render();
