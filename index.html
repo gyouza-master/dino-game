@@ -574,6 +574,17 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; font-weight: 900; color: #ff5340; text-shadow: 0 2px 4px #000; letter-spacing: .1em;
   }
+  /* SR/SSRのオーラ（リーダーの炎より優先） */
+  .bf-member.rar-sr { animation: srAura 1.6s infinite alternate; }
+  .bf-member.rar-ssr { animation: ssrAura 1.05s infinite alternate; }
+  @keyframes srAura {
+    from { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 10px rgba(255,179,0,.55), 0 0 22px rgba(255,140,0,.28); }
+    to { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 18px rgba(255,200,60,.9), 0 0 36px rgba(255,150,0,.45); }
+  }
+  @keyframes ssrAura {
+    from { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 12px rgba(255,61,0,.65), 0 0 26px rgba(255,90,0,.35); }
+    to { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 22px rgba(255,90,30,1), 0 0 46px rgba(255,61,0,.6); }
+  }
   @keyframes flameGlow {
     from { box-shadow: 0 0 9px rgba(255,106,0,.45), 0 0 20px rgba(255,61,0,.22); }
     to { box-shadow: 0 0 16px rgba(255,150,0,.85), 0 0 34px rgba(255,61,0,.5); }
@@ -3086,7 +3097,7 @@ function renderBattleTeam() {
     }
     const u = battle && battle.units ? battle.units[i] : null;
     const hpBar = u ? `<div class="bf-hp${u.hp / u.hpMax <= 0.25 ? ' low' : ''}"><i style="width:${Math.max(0, u.hp / u.hpMax * 100)}%"></i></div><span class="bf-hp-num">${Math.max(0, u.hp)}</span>` : '';
-    return `<div class="bf-member${i === 0 ? ' leader' : ''}${u && u.hp <= 0 ? ' ko' : ''}" data-id="${id}" style="--rc:${RARITY_COLOR[d.rarity]}">${dinoIconHTML(id)}${chip}${hpBar}<span class="bm-name">${i === 0 ? '⭐' : ''}${d.name}</span></div>`;
+    return `<div class="bf-member${i === 0 ? ' leader' : ''}${u && u.hp <= 0 ? ' ko' : ''}${d.rarity === 'SR' ? ' rar-sr' : d.rarity === 'SSR' ? ' rar-ssr' : ''}" data-id="${id}" style="--rc:${RARITY_COLOR[d.rarity]}">${dinoIconHTML(id)}${chip}${hpBar}<span class="bm-name">${i === 0 ? '⭐' : ''}${d.name}</span></div>`;
   }).join('');
 }
 function flameBurst(anchor, size) {
@@ -3185,8 +3196,20 @@ function attack() {
       battle.gauge = Math.min(100, battle.gauge + rand(4, 7));
       sfx(crit ? 'crit' : 'hit');
       bfAnim(memberEl(u.id), 'bf-lunge');
-      flameBurst(document.getElementById('b-boss-art'), 80);
-      dmgPop(dmg, crit);
+      // SR/SSRは攻撃エフェクトを格上げ（大きな炎＋画面シェイク＋大ダメージ表示）
+      const rar = DINO_MAP[u.id].rarity;
+      const bossArt = document.getElementById('b-boss-art');
+      if (rar === 'SSR') {
+        flameBurst(bossArt, 175);
+        setTimeout(() => flameBurst(bossArt, 120), 90);
+        shakeBattle(true);
+      } else if (rar === 'SR') {
+        flameBurst(bossArt, 125);
+        shakeBattle(false);
+      } else {
+        flameBurst(bossArt, 80);
+      }
+      dmgPop(dmg, crit || rar === 'SR' || rar === 'SSR');
       if (crit) shakeBattle(true);
       renderBattle();
       if (battle.hp <= 0) { battle.busy = false; finishWin(); return; }
