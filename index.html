@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="images/icon-192.png">
+<link rel="icon" href="images/icon-192.png">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
@@ -1024,12 +1025,24 @@
   .pool-rare svg { width: 13px; height: 13px; vertical-align: -2px; }
   .field-icon svg { width: 26px; height: 26px; }
 
+  /* 起動スプラッシュ */
+  #splash {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 40%, #1b2333, #06070a 75%);
+    animation: splashFade 2s forwards; pointer-events: none;
+  }
+  #splash img { width: min(80%, 360px); filter: drop-shadow(0 10px 30px rgba(0,0,0,.7)); animation: splashLogo 1.1s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes splashLogo { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes splashFade { 0%, 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
   .hidden { display: none !important; }
   .center { text-align: center; }
   .small { font-size: 11px; color: #8fa3bd; }
 </style>
 </head>
 <body>
+<div id="splash"><img src="images/logo.png" onerror="this.remove()"></div>
 <div id="app">
   <header>
     <div class="player-row">
@@ -1233,8 +1246,11 @@
   <!-- ===== デイリーミッション ===== -->
   <div id="mission-modal" class="hidden" onclick="closeMissions()">
     <div class="mission-box" onclick="event.stopPropagation()">
-      <h2>📋 デイリーミッション</h2>
-      <div class="small" style="margin-bottom:8px">毎日リセット。クリアして報酬をゲットしよう！</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px">
+        <img src="images/navigator.png" style="height:92px" onerror="this.remove()">
+        <div><h2 style="margin:0">📋 デイリーミッション</h2>
+        <div class="small">「今日のノルマ、いっしょに頑張ろう！」</div></div>
+      </div>
       <div id="mission-list"></div>
       <h2 style="margin-top:14px">🏅 実績</h2>
       <div id="achv-list" style="max-height:32vh; overflow-y:auto"></div>
@@ -1920,11 +1936,12 @@ function stealFromPlayer(lo, hi) {
 // フィールドごとの3D配色（空＝フォグ・地面・木の葉・幹）
 const FIELD_3D = [
   { fog:0x081a0b, ground:0x0e2f16, ground2:0x1a4a22, obj:'tree', leaf:0x1e5c2a, leaf2:0x2e7d32, leaf3:0x14532d, trunk:0x3a2a18, count:44, props:110, fogFar:62, mote:0xffdf8a,
-    tex:'jungle', texTint:0x8da687, jungle:1, rays:1, mist:1, flies:1, grass:1 },
-  { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8, mist:1, tex:'swamp', texTint:0x90a090 },
-  { fog:0x2a0f08, ground:0x1a0d0a, ground2:0x2a140c, obj:'rock', leaf:0x4a2a20, leaf2:0x5c3626, leaf3:0x332016, trunk:0x331a12, count:34, props:44, fogFar:55, mote:0xff9a3c, tex:'volcano', texTint:0x9a6a58, bareRock:1 },
-  { fog:0x0a1c30, ground:0x0e2238, ground2:0x14304a, obj:'tree', leaf:0x1d5c3a, leaf2:0x2a7d4a, leaf3:0x14402a, trunk:0x4a3826, count:30, props:56, fogFar:60, mote:0xcfe8ff, tex:'coast', texTint:0xb8ae96 },
-  { fog:0x160b24, ground:0x170d22, ground2:0x241636, obj:'tree', leaf:0x2a1e44, leaf2:0x3a2a5c, leaf3:0x1e1430, trunk:0x241a30, count:36, props:64, fogFar:50, mote:0xd8b4fe, tex:'island', texTint:0x8f7fa6, bareRock:1 },
+    tex:'jungle', texTint:0x8da687, jungle:1, rays:1, mist:1, flies:1, grass:1, walls:1,
+    bbTrees:['tree1','tree2','tree3'], bbUnder:['fern1','bush1'] },
+  { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8, mist:1, tex:'swamp', texTint:0x90a090, walls:1, bbTrees:['deadtree1'], bbUnder:['reeds1'] },
+  { fog:0x2a0f08, ground:0x1a0d0a, ground2:0x2a140c, obj:'rock', leaf:0x4a2a20, leaf2:0x5c3626, leaf3:0x332016, trunk:0x331a12, count:34, props:44, fogFar:55, mote:0xff9a3c, tex:'volcano', texTint:0x9a6a58, bareRock:1, bbTrees:['chartree1'] },
+  { fog:0x0a1c30, ground:0x0e2238, ground2:0x14304a, obj:'tree', leaf:0x1d5c3a, leaf2:0x2a7d4a, leaf3:0x14402a, trunk:0x4a3826, count:30, props:56, fogFar:60, mote:0xcfe8ff, tex:'coast', texTint:0xb8ae96, bbTrees:['tree2'], bbUnder:['driftwood1'] },
+  { fog:0x160b24, ground:0x170d22, ground2:0x241636, obj:'tree', leaf:0x2a1e44, leaf2:0x3a2a5c, leaf3:0x1e1430, trunk:0x241a30, count:36, props:64, fogFar:50, mote:0xd8b4fe, tex:'island', texTint:0x8f7fa6, bareRock:1, bbTrees:['ribs1','deadtree1'] },
 ];
 const WORLD_DEPTH = 140; // 木を使い回す奥行き
 let T3 = null;           // 3D一式（WebGLが使えない端末ではnullのまま＝背景グラデのみ）
@@ -2203,8 +2220,8 @@ function makeMotes(cfg) {
 /* ===== リアル化パーツ：本物テクスチャの地面・巨木・木漏れ日・霧・蝶 ===== */
 
 /* 本物の木のビルボード（images/tex/tree*.png 等の切り抜き画像があれば板に貼って使う） */
-const TREE_TEX_NAMES = ['tree1', 'tree2', 'tree3'];
-const UNDER_TEX_NAMES = ['fern1', 'bush1'];
+const TREE_TEX_NAMES = ['tree1', 'tree2', 'tree3', 'deadtree1', 'chartree1', 'ribs1'];
+const UNDER_TEX_NAMES = ['fern1', 'bush1', 'reeds1', 'driftwood1'];
 const CANOPY_TEX_NAMES = ['canopy1', 'canopy2'];           // ハイブリッド木の樹冠（切り抜き上部）
 const SURF_TEX_NAMES = ['bark_diff', 'bark_nor', 'rock_diff', 'rock_nor']; // 樹皮・岩の実写テクスチャ(jpg)
 const _treeTex = {};
@@ -2459,12 +2476,14 @@ function build3DWorld(ai) {
   if (cfg.tex) { T3.path = makePathStrip(); group.add(T3.path); }
 
   T3.trees = [];
-  const hasTreeTex = cfg.jungle && TREE_TEX_NAMES.some(n => _treeTex[n]);
-  const hasUnderTex = cfg.jungle && UNDER_TEX_NAMES.some(n => _treeTex[n]);
+  const bbT = (cfg.bbTrees || []).filter(n => _treeTex[n]);
+  const bbU = (cfg.bbUnder || []).filter(n => _treeTex[n]);
+  const hasTreeTex = bbT.length > 0;
+  const hasUnderTex = bbU.length > 0;
   const treeCount = hasTreeTex ? Math.round(cfg.count * 1.35) : cfg.count; // 画像の木があるなら密林化
   for (let i = 0; i < treeCount; i++) {
     const obj = hasTreeTex && Math.random() < 0.72
-      ? makeBillboardPlant(TREE_TEX_NAMES, 5.5, 10.5)   // 本物の木の切り抜き
+      ? makeBillboardPlant(bbT, 5.5, 10.5)   // そのフィールドの切り抜き植生
       : (cfg.obj === 'tree' ? makeTree(cfg) : makeRock(cfg));
     scatter(obj, T3.camZ, Math.random() < 0.3); // 3割は道の近くに寄せて圧を出す
     T3.trees.push(obj);
@@ -2482,9 +2501,9 @@ function build3DWorld(ai) {
     }
   }
   // 緑の壁：大きな茂みを両脇に連続配置して視界を塞ぐ（ジャングルの圧）
-  if (hasUnderTex) {
+  if (hasUnderTex && cfg.walls) {
     for (let i = 0; i < 26; i++) {
-      const w = makeBillboardPlant(UNDER_TEX_NAMES, 2.6, 4.2);
+      const w = makeBillboardPlant(bbU, 2.6, 4.2);
       const side = i % 2 ? -1 : 1;
       w.position.x = side * (4.8 + Math.random() * 3.5);
       w.position.z = T3.camZ - 3 - (i / 26) * WORLD_DEPTH - Math.random() * 4;
@@ -2497,7 +2516,7 @@ function build3DWorld(ai) {
   const propCount = hasUnderTex ? Math.round((cfg.props || 0) * 1.6) : (cfg.props || 0);
   for (let i = 0; i < propCount; i++) {
     const p = hasUnderTex && Math.random() < 0.72
-      ? makeBillboardPlant(UNDER_TEX_NAMES, 1.0, 2.2)
+      ? makeBillboardPlant(bbU, 1.0, 2.2)
       : makeProp(cfg);
     scatter(p, T3.camZ, true);
     T3.trees.push(p);
@@ -2802,7 +2821,7 @@ function explore() {
   } else if (r < 82) {
     // 恐竜ハンター乱入！
     res = {
-      art: bigIcon('hunter', '#c77dff'),
+      art: '<img src="images/hunter.png" style="max-height:64px" onerror="this.outerHTML=\'🥷\'">',
       text:'<span class="c-bad">恐竜ハンターが現れた！</span>',
       sub:'「そのDNA、置いていきな！」',
       hunter:true,
@@ -2918,7 +2937,7 @@ function openHunterBattle() {
     type: 'hunter',
     name,
     title: `${name}（DNA強奪犯）`,
-    art: bigIcon('hunter', '#c77dff'),
+    art: '<img src="images/hunter.png" style="max-height:150px; filter:drop-shadow(0 10px 18px rgba(0,0,0,.6))" onerror="this.outerHTML=\'🥷\'">',
     dtype: pick(['meat', 'plant', 'aqua']),
     terrain: area.terrain,
     hp: Math.round(area.boss.hp * 0.35),
@@ -4033,6 +4052,8 @@ init3D();
 renderAll();
 checkDaily();
 ensureMissions();
+// スプラッシュは表示後に取り除く
+setTimeout(() => { const sp = document.getElementById('splash'); if (sp) sp.remove(); }, 2200);
 // PWA：サービスワーカー登録（file://のダブルクリック起動では無効）
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
