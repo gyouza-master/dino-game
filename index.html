@@ -679,8 +679,10 @@
   /* ===== DNA解析ラボ ===== */
   #dna-lab {
     position: fixed; inset: 0; z-index: 85; overflow: hidden;
+    /* ラボ背景画像＋暗めのオーバーレイ（らせんとUIを目立たせる） */
     background:
-      radial-gradient(ellipse at 50% 30%, rgba(0,120,140,.18), transparent 60%),
+      linear-gradient(180deg, rgba(3,10,16,.42) 0%, rgba(3,10,16,.3) 45%, rgba(3,10,16,.72) 100%),
+      url('images/lab-bg.jpg') center / cover no-repeat,
       linear-gradient(180deg, #06121a 0%, #030a10 100%);
     display: flex; align-items: center; justify-content: center;
   }
@@ -952,6 +954,8 @@
   .field-thumb { height: 64px; border-radius: 8px; overflow: hidden; margin-bottom: 8px; border: 1px solid #2a3547; }
   .field-thumb svg { width: 100%; height: 100%; display: block; }
   .stage-thumb svg { height: 54px; width: 96px; border-radius: 6px; display: block; margin: 0 auto; }
+  .field-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .stage-thumb .field-img { height: 54px; width: 96px; border-radius: 6px; margin: 0 auto; }
   .trail-player { color: #ffb300; }
   .trail-player svg { width: 16px; height: 16px; }
   .trail-boss { color: #ff8a65; }
@@ -1266,8 +1270,16 @@ const ICONS = {
 };
 function bigIcon(name, color) { return `<span class="big-ico" style="color:${color || '#e8eef5'}">${ICONS[name]}</span>`; }
 
-/* フィールドの風景画（SVGレイヤー画） */
+/* フィールドの風景画（images/field-*.jpg があれば画像、なければSVG簡易画） */
+const FIELD_IMG_NAMES = ['field-jungle', 'field-swamp', 'field-volcano', 'field-coast', 'field-island'];
+const FIELD_IMG_FAIL = new Set();
 function fieldArt(i) {
+  if (!FIELD_IMG_FAIL.has(i)) {
+    return `<img class="field-img" src="images/${FIELD_IMG_NAMES[i]}.jpg" alt="" data-fi="${i}" onerror="FIELD_IMG_FAIL.add(+this.dataset.fi); this.outerHTML = fieldArtSvg(+this.dataset.fi)">`;
+  }
+  return fieldArtSvg(i);
+}
+function fieldArtSvg(i) {
   const scenes = [
     `<svg viewBox="0 0 120 64" preserveAspectRatio="none"><rect width="120" height="64" fill="#0b3d20"/><circle cx="98" cy="12" r="6" fill="#fef08a" opacity=".8"/><path d="M0 40 L30 24 L55 38 L85 22 L120 36 L120 64 L0 64Z" fill="#0e5228"/><path d="M0 50 L40 38 L75 48 L120 40 L120 64 L0 64Z" fill="#083018"/><path d="M18 54 l4-13 4 13z M88 56 l5-15 5 15z" fill="#04150a"/></svg>`,
     `<svg viewBox="0 0 120 64" preserveAspectRatio="none"><rect width="120" height="64" fill="#1e293b"/><rect y="18" width="120" height="5" fill="#e2e8f0" opacity=".14"/><rect y="30" width="120" height="6" fill="#e2e8f0" opacity=".1"/><path d="M0 46 L35 36 L70 44 L120 38 L120 64 L0 64Z" fill="#0f1c26"/><path d="M28 48V30M28 36l-6-5M28 34l6-6M92 50V32M92 40l-6-6M92 37l5-5" stroke="#0a141c" stroke-width="3" fill="none"/></svg>`,
