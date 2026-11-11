@@ -563,6 +563,17 @@
     font-size: 8px; font-weight: 900; color: #ffe9b0; text-align: center;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* 恐竜ごとのHPバー（カード上端） */
+  .bf-hp { position: absolute; top: 0; left: 0; right: 0; height: 6px; z-index: 3; background: rgba(0,0,0,.65); }
+  .bf-hp > i { display: block; height: 100%; background: linear-gradient(90deg, #35e05a, #8dff6a); transition: width .3s; }
+  .bf-hp.low > i { background: linear-gradient(90deg, #ff5340, #ff9d2e); }
+  .bf-hp-num { position: absolute; top: 7px; right: 2px; z-index: 3; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+  .bf-member.ko { filter: grayscale(1) brightness(.5); }
+  .bf-member.ko::after {
+    content: 'KO'; position: absolute; inset: 0; z-index: 4;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 900; color: #ff5340; text-shadow: 0 2px 4px #000; letter-spacing: .1em;
+  }
   @keyframes flameGlow {
     from { box-shadow: 0 0 9px rgba(255,106,0,.45), 0 0 20px rgba(255,61,0,.22); }
     to { box-shadow: 0 0 16px rgba(255,150,0,.85), 0 0 34px rgba(255,61,0,.5); }
@@ -2910,13 +2921,31 @@ function explore() {
 
 /* ========== バトル（ボス＆ハンター共通） ========== */
 let battle = null;
+// 恐竜1体の実効パワー（相性・地形込み）
+function effUnitPow(u, opp) {
+  const t = DINO_MAP[u.id].type;
+  let m = TYPE_BEATS[t] === opp.dtype ? 1.5 : TYPE_BEATS[opp.dtype] === t ? 0.75 : 1;
+  if (opp.terrain && t === opp.terrain) m *= 1.3;
+  return u.pow * m;
+}
+function memberEl(id) { return document.querySelector(`#b-team .bf-member[data-id="${id}"]`); }
 function startBattle(opp) {
+  // 恐竜ごとにHPを持たせる（1体ずつ攻撃し、敵の反撃は1体を狙う＝本家式）
+  const units = teamIds().map(id => {
+    const p = dinoPower(id);
+    const hpMax = 40 + Math.round(p * 2.2);
+    return { id, pow: p, hp: hpMax, hpMax };
+  });
+  const phpMax = units.reduce((s, u) => s + u.hpMax, 0);
+  // 敵HPは「チーム全員の攻撃を数ターン受ける」前提にスケール
+  const ehp = Math.round(opp.hp * 2.2);
   battle = {
     opp,
-    hp: opp.hp, hpMax: opp.hp,
-    php: 100 + S.level * 10, phpMax: 100 + S.level * 10,
+    hp: ehp, hpMax: ehp,
+    units, php: phpMax, phpMax,
     gauge: 0,
     intro: true, // 開幕演出中は操作不可
+    busy: false,
   };
   // 3Dフィールドを戦場の背景にする（探索タブに切り替えてUIだけ隠す）
   if (!document.body.classList.contains('explore-mode')) switchTab('explore');
@@ -3055,7 +3084,9 @@ function renderBattleTeam() {
         chip = `<span class="bm-adv ${cls}">${adv}${ter}</span>`;
       }
     }
-    return `<div class="bf-member${i === 0 ? ' leader' : ''}" style="--rc:${RARITY_COLOR[d.rarity]}">${dinoIconHTML(id)}${chip}<span class="bm-name">${i === 0 ? '⭐' : ''}${d.name}</span></div>`;
+    const u = battle && battle.units ? battle.units[i] : null;
+    const hpBar = u ? `<div class="bf-hp${u.hp / u.hpMax <= 0.25 ? ' low' : ''}"><i style="width:${Math.max(0, u.hp / u.hpMax * 100)}%"></i></div><span class="bf-hp-num">${Math.max(0, u.hp)}</span>` : '';
+    return `<div class="bf-member${i === 0 ? ' leader' : ''}${u && u.hp <= 0 ? ' ko' : ''}" data-id="${id}" style="--rc:${RARITY_COLOR[d.rarity]}">${dinoIconHTML(id)}${chip}${hpBar}<span class="bm-name">${i === 0 ? '⭐' : ''}${d.name}</span></div>`;
   }).join('');
 }
 function flameBurst(anchor, size) {
@@ -3078,6 +3109,21 @@ function bfAnim(el, cls) {
   setTimeout(() => el.classList.remove(cls), 380);
 }
 function renderBattle() {
+  // 自軍HPはユニット合計に同期し、各カードのバーも更新
+  if (battle.units) {
+    battle.php = battle.units.reduce((s, u) => s + Math.max(0, u.hp), 0);
+    battle.units.forEach(u => {
+      const el = memberEl(u.id);
+      if (!el) return;
+      const bar = el.querySelector('.bf-hp > i');
+      if (bar) bar.style.width = Math.max(0, u.hp / u.hpMax * 100) + '%';
+      const wrap = el.querySelector('.bf-hp');
+      if (wrap) wrap.classList.toggle('low', u.hp / u.hpMax <= 0.25);
+      const num = el.querySelector('.bf-hp-num');
+      if (num) num.textContent = Math.max(0, u.hp);
+      el.classList.toggle('ko', u.hp <= 0);
+    });
+  }
   document.getElementById('b-boss-hp-text').textContent = `${Math.max(0, battle.hp)}/${battle.hpMax}`;
   document.getElementById('b-boss-hp-bar').style.width = Math.max(0, battle.hp / battle.hpMax * 100) + '%';
   document.getElementById('b-php-text').textContent = `${Math.max(0, battle.php)}/${battle.phpMax}`;
@@ -3086,7 +3132,7 @@ function renderBattle() {
   document.getElementById('b-boss-hp-bar').classList.toggle('low', battle.hp / battle.hpMax <= 0.25);
   document.getElementById('b-gauge-text').textContent = battle.gauge + '%';
   document.getElementById('b-gauge-bar').style.width = battle.gauge + '%';
-  document.getElementById('btn-skill').classList.toggle('hidden', battle.gauge < 100);
+  document.getElementById('btn-skill').classList.toggle('hidden', battle.gauge < 100 || (battle.units && battle.units[0] && battle.units[0].hp <= 0));
 }
 function shakeBattle(hard) {
   const box = document.getElementById('battle-box');
@@ -3094,8 +3140,8 @@ function shakeBattle(hard) {
   box.classList.remove('shake-soft', 'shake-hard'); void box.offsetWidth;
   box.classList.add(cls);
 }
-function dmgPop(dmg, big) {
-  const art = document.getElementById('b-boss-art');
+function dmgPop(dmg, big, anchorEl) {
+  const art = anchorEl || document.getElementById('b-boss-art');
   art.classList.remove('hit'); void art.offsetWidth; art.classList.add('hit');
   const pop = document.createElement('div');
   pop.className = 'dmg-pop';
@@ -3122,40 +3168,67 @@ function finishWin() {
   }, 950);
 }
 function attack() {
-  if (!battle || battle.finishing || battle.intro) return;
-  const crit = Math.random() < 0.1;
-  const dmg = Math.max(1, Math.round(effTeamPower(battle.opp.dtype, battle.opp.terrain) * (0.9 + Math.random() * 0.4) * (crit ? 2 : 1)));
-  battle.hp -= dmg;
-  sfx(crit ? 'crit' : 'hit');
-  battle.gauge = Math.min(100, battle.gauge + rand(16, 24));
-  shakeBattle(crit);
-  dmgPop(dmg, crit);
-  // 隊列が順番に突進して激突（恐竜ドミニオン風）
-  document.querySelectorAll('#b-team .bf-member').forEach((mEl, i) => {
+  if (!battle || battle.finishing || battle.intro || battle.busy) return;
+  const attackers = battle.units.filter(u => u.hp > 0);
+  if (!attackers.length) return;
+  battle.busy = true;
+  document.getElementById('btn-attack').disabled = true;
+  let total = 0, anyCrit = false, done = 0;
+  // 味方が1体ずつ順番に突撃（本家ドミニオン式の応酬）
+  attackers.forEach((u, i) => {
     setTimeout(() => {
-      bfAnim(mEl, 'bf-lunge');
-      flameBurst(document.getElementById('b-boss-art'), 80 + i * 14);
-      if (i > 0) sfx('hit');
-    }, i * 95);
+      if (!battle || battle.finishing) return;
+      const crit = Math.random() < 0.1;
+      const dmg = Math.max(1, Math.round(effUnitPow(u, battle.opp) * (0.85 + Math.random() * 0.3) * (crit ? 1.8 : 1)));
+      battle.hp -= dmg; total += dmg; done++;
+      if (crit) anyCrit = true;
+      battle.gauge = Math.min(100, battle.gauge + rand(4, 7));
+      sfx(crit ? 'crit' : 'hit');
+      bfAnim(memberEl(u.id), 'bf-lunge');
+      flameBurst(document.getElementById('b-boss-art'), 80);
+      dmgPop(dmg, crit);
+      if (crit) shakeBattle(true);
+      renderBattle();
+      if (battle.hp <= 0) { battle.busy = false; finishWin(); return; }
+      if (done === attackers.length) {
+        document.getElementById('b-log').textContent = anyCrit
+          ? `💥 クリティカルまじりで ${total} の総ダメージ！`
+          : `チームの総攻撃！ ${total} ダメージ！`;
+        setTimeout(enemyTurn, 430);
+      }
+    }, i * 140);
   });
-
-  if (battle.hp <= 0) { finishWin(); return; }
-
-  const oppDmg = rand(Math.round(battle.opp.atk * 0.7), Math.round(battle.opp.atk * 1.3));
-  battle.php -= oppDmg;
+}
+function enemyTurn() {
+  if (!battle || battle.finishing) return;
+  const alive = battle.units.filter(u => u.hp > 0);
+  if (!alive.length) { loseBattle(); return; }
+  // 敵の反撃は味方1体を狙う（その恐竜のHPが削れ、倒れれば火力も落ちる）
+  const target = alive[Math.floor(Math.random() * alive.length)];
+  const crit = Math.random() < 0.1;
+  const dmg = Math.max(1, Math.round(battle.opp.atk * 3.2 * (0.85 + Math.random() * 0.3) * (crit ? 1.5 : 1)));
+  target.hp -= dmg;
+  sfx('hit');
   bfAnim(document.getElementById('b-boss-art'), 'bf-lunge-d');
-  bfAnim(document.getElementById('b-team'), 'bf-hit');
-  flameBurst(document.getElementById('b-team'), 90);
+  const tEl = memberEl(target.id);
+  bfAnim(tEl, 'bf-hit');
+  flameBurst(tEl, 90);
+  dmgPop(dmg, crit, tEl);
+  const td = DINO_MAP[target.id];
   document.getElementById('b-log').textContent =
-    (crit ? `💥 クリティカル！${dmg}ダメージ！！` : `${dmg}ダメージ！`) +
-    ` ${battle.opp.name}の反撃で ${oppDmg} くらった！`;
-  if (battle.php <= 0) { loseBattle(); return; }
+    (crit ? `💥 ${battle.opp.name}のクリティカル反撃！` : `${battle.opp.name}の反撃！`) +
+    ` ${td.name} に ${dmg} ダメージ！` +
+    (target.hp <= 0 ? ` ${td.name}が たおれた…！` : '');
   renderBattle();
+  if (battle.units.every(u => u.hp <= 0)) { loseBattle(); return; }
+  battle.busy = false;
+  document.getElementById('btn-attack').disabled = false;
 }
 const SKILL_NAMES = { meat: 'デス・クラッシュ', plant: 'グランド・クエイク', aqua: 'メガ・ウェーブ' };
 let skillBusy = false; // カットイン中は二重発動しない
 function skillAttack() {
   if (!battle || battle.finishing || battle.intro || battle.gauge < 100 || skillBusy) return;
+  if (battle.units && battle.units[0] && battle.units[0].hp <= 0) return; // リーダーが倒れていたら撃てない
   skillBusy = true;
   battle.gauge = 0;
   renderBattle();
@@ -3176,7 +3249,8 @@ function skillAttack() {
     cut.classList.add('hidden');
     skillBusy = false;
     if (!battle) return; // カットイン中に逃げていたら何もしない
-    const dmg = Math.round(effTeamPower(battle.opp.dtype, battle.opp.terrain) * 3);
+    const lu = battle.units ? battle.units[0] : null;
+    const dmg = lu ? Math.round(effUnitPow(lu, battle.opp) * 3.5) : Math.round(effTeamPower(battle.opp.dtype, battle.opp.terrain) * 3);
     battle.hp -= dmg;
     dmgPop(dmg, true);
     flameBurst(document.getElementById('b-boss-art'), 190);
