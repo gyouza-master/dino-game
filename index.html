@@ -295,11 +295,41 @@
   body.explore-mode .stage-art img { max-height: 44px; }
   body.explore-mode .stage-art .dino-emoji { font-size: 34px; }
   body.explore-mode .stage-text { margin-top: 0; flex: 1; }
-  /* 進むボタン：小さく、フィールドの上に浮かせる（画面の右下に固定） */
+  /* 進むボタン：探検コンパス風のFAB（回る破線リング＋光のスイープ＋鼓動） */
   body.explore-mode #btn-explore, body.explore-mode #btn-boss {
-    position: fixed; right: max(12px, calc(50vw - 228px)); bottom: 104px; z-index: 30;
-    width: auto; padding: 10px 22px; border-radius: 999px;
-    font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.55);
+    position: fixed; right: max(14px, calc(50vw - 226px)); bottom: 98px; z-index: 30;
+    width: 88px; height: 88px; margin: 0; padding: 0; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-size: 13px; line-height: 1; border-width: 2px; border-bottom-width: 2px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 16px rgba(255,106,0,.35);
+  }
+  body.explore-mode #btn-explore .ico, body.explore-mode #btn-boss .ico { width: 28px; height: 28px; }
+  body.explore-mode #btn-explore::before, body.explore-mode #btn-boss::before {
+    content: ''; position: absolute; inset: -8px; border-radius: 50%;
+    border: 2px dashed rgba(255, 210, 120, .6);
+    animation: fabSpin 16s linear infinite;
+  }
+  body.explore-mode #btn-boss::before { border-color: rgba(255, 130, 110, .7); animation-duration: 6s; }
+  body.explore-mode #btn-explore::after, body.explore-mode #btn-boss::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+    background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,.55) 50%, transparent 60%);
+    background-size: 260% 260%; background-position: 190% 190%;
+    animation: fabShine 3.4s ease-in-out infinite;
+  }
+  body.explore-mode #btn-explore:not(:disabled) { animation: fabPulse 1.7s infinite; }
+  body.explore-mode #btn-explore:disabled::before { animation-play-state: paused; border-color: rgba(140,150,160,.4); }
+  body.explore-mode #btn-explore:disabled::after { display: none; }
+  @keyframes fabSpin { to { transform: rotate(360deg); } }
+  @keyframes fabShine { 0%, 52% { background-position: 190% 190%; } 86%, 100% { background-position: -90% -90%; } }
+  @keyframes fabPulse {
+    0%, 100% { box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 14px rgba(255,106,0,.35); }
+    50% { box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 32px rgba(255,150,0,.75); }
+  }
+  .fab-cost {
+    position: absolute; top: 2px; right: 6px; z-index: 2;
+    background: linear-gradient(180deg, #35e05a, #0f9e3a); color: #fff;
+    font-size: 10px; font-weight: 900; border-radius: 999px; padding: 2px 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5); font-style: normal;
   }
 
   /* ===== ボタン ===== */
@@ -3960,9 +3990,14 @@ function updateExploreBtn() {
   const exBtn = document.getElementById('btn-explore');
   exBtn.classList.toggle('hidden', bossReady);
   exBtn.disabled = exploring || S.stamina < STAMINA_COST;
-  exBtn.innerHTML = exploring ? '探索中…'
-    : S.stamina < STAMINA_COST ? '回復待ち…'
-    : '進む';
+  exBtn.innerHTML = exploring
+    ? `${ICONS.paw}<span>探索中…</span>`
+    : S.stamina < STAMINA_COST
+      ? `${ICONS.moon}<span>回復待ち</span>`
+      : `${ICONS.paw}<span>進む</span><b class="fab-cost">-5</b>`;
+  if (bossReady) {
+    document.getElementById('btn-boss').innerHTML = `${ICONS.skull}<span>挑む！</span>`;
+  }
 }
 
 function renderExplore() {
