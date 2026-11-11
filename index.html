@@ -2656,6 +2656,7 @@ function rollGacha() {
 function gachaReveal() {
   if (!gachaPending) return;
   const { d, rarity, isNew, dupBonus, color } = gachaPending;
+  IMG_FAIL.delete(d.id); // 晴れ舞台なので画像読み込みを再トライ（通信失敗の絵文字化を引きずらない）
   gachaPending = null;
   gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
   clearInterval(gachaParticleTimer);
