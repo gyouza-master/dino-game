@@ -578,13 +578,22 @@
   .bf-member.rar-sr { animation: srAura 1.6s infinite alternate; }
   .bf-member.rar-ssr { animation: ssrAura 1.05s infinite alternate; }
   @keyframes srAura {
-    from { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 10px rgba(255,179,0,.55), 0 0 22px rgba(255,140,0,.28); }
-    to { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 18px rgba(255,200,60,.9), 0 0 36px rgba(255,150,0,.45); }
+    from { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 14px rgba(255,179,0,.75), 0 0 30px rgba(255,140,0,.4); transform: scale(1); }
+    to { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 24px rgba(255,205,70,1), 0 0 48px rgba(255,150,0,.6); transform: scale(1.05); }
   }
   @keyframes ssrAura {
-    from { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 12px rgba(255,61,0,.65), 0 0 26px rgba(255,90,0,.35); }
-    to { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 22px rgba(255,90,30,1), 0 0 46px rgba(255,61,0,.6); }
+    from { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 16px rgba(255,61,0,.85), 0 0 34px rgba(255,90,0,.5); transform: scale(1.01); }
+    to { box-shadow: 0 4px 10px rgba(0,0,0,.5), 0 0 30px rgba(255,100,35,1), 0 0 60px rgba(255,61,0,.75); transform: scale(1.07); }
   }
+  /* 編成画面：SR/SSRは台座と本体にオーラ */
+  .fslot.r-SR .pad { background: radial-gradient(ellipse at center, rgba(255,190,40,.85) 0%, rgba(255,150,0,.32) 55%, transparent 72%); animation: padPulse 1.5s infinite alternate; }
+  .fslot.r-SSR .pad { background: radial-gradient(ellipse at center, rgba(255,95,30,.9) 0%, rgba(255,61,0,.38) 55%, transparent 72%); animation: padPulse 1.05s infinite alternate; }
+  .fslot.r-SR img { filter: drop-shadow(0 0 10px rgba(255,180,0,.6)) drop-shadow(0 8px 8px rgba(0,0,0,.7)); }
+  .fslot.r-SSR img { filter: drop-shadow(0 0 14px rgba(255,80,20,.75)) drop-shadow(0 8px 8px rgba(0,0,0,.7)); }
+  @keyframes padPulse { from { opacity: .7; } to { opacity: 1; } }
+  /* 恐竜を選ぶリスト：SR/SSRは枠がオーラで脈打つ */
+  .mslot.r-SR { border-color: #ffb300; animation: srAura 1.6s infinite alternate; }
+  .mslot.r-SSR { border-color: #ff3d00; animation: ssrAura 1.05s infinite alternate; }
   @keyframes flameGlow {
     from { box-shadow: 0 0 9px rgba(255,106,0,.45), 0 0 20px rgba(255,61,0,.22); }
     to { box-shadow: 0 0 16px rgba(255,150,0,.85), 0 0 34px rgba(255,61,0,.5); }
@@ -1013,6 +1022,8 @@
   @keyframes sheen { 0%, 55% { left: -60%; } 85%, 100% { left: 130%; } }
   .dino-card.r-SSR { animation: ssrglow 1.6s infinite alternate; }
   @keyframes ssrglow { from { box-shadow: 0 0 8px rgba(255,61,0,.4); } to { box-shadow: 0 0 20px rgba(255,61,0,.85); } }
+  .dino-card.r-SR { animation: srglow 1.6s infinite alternate; }
+  @keyframes srglow { from { box-shadow: 0 0 8px rgba(255,179,0,.4); } to { box-shadow: 0 0 20px rgba(255,190,40,.85); } }
 
   /* ===== ひっさつカットイン ===== */
   #cutin {
@@ -1651,7 +1662,7 @@ function renderTeam() {
     if (!id) { html += '<div class="fslot empty"><div class="pad"></div><div class="fplus">＋<br>恐竜を選ぶ</div></div>'; continue; }
     const d = DINO_MAP[id];
     const stars = '★'.repeat({ N: 1, R: 2, SR: 3, SSR: 4 }[d.rarity] || 1);
-    html += `<div class="fslot${i === 0 ? ' leader' : ''}" onclick="toggleTeam('${id}')">
+    html += `<div class="fslot${i === 0 ? ' leader' : ''}${d.rarity === 'SR' || d.rarity === 'SSR' ? ' r-' + d.rarity : ''}" onclick="toggleTeam('${id}')">
       <span class="fst">${stars}</span>
       <div class="pad"></div>
       ${dinoArtHTML(id, ownAlt(id))}
@@ -1669,7 +1680,7 @@ function renderTeam() {
   document.getElementById('team-list').innerHTML = list.length ? list.map(id => {
     const d = DINO_MAP[id];
     const inTeam = ids.includes(id);
-    return `<div class="mslot${inTeam ? ' in' : ''}" onclick="toggleTeam('${id}')">
+    return `<div class="mslot${inTeam ? ' in' : ''}${d.rarity === 'SR' || d.rarity === 'SSR' ? ' r-' + d.rarity : ''}" onclick="toggleTeam('${id}')">
       ${inTeam ? '<span class="mbadge">出撃中</span>' : ''}
       <div class="pad"></div>
       ${dinoArtHTML(id, ownAlt(id))}
