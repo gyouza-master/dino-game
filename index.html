@@ -300,30 +300,46 @@
     position: fixed; right: max(14px, calc(50vw - 226px)); bottom: 98px; z-index: 30;
     width: 88px; height: 88px; margin: 0; padding: 0; border-radius: 50%;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    font-size: 13px; line-height: 1; border-width: 2px; border-bottom-width: 2px;
-    box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 16px rgba(255,106,0,.35);
+    font-size: 13px; line-height: 1;
+    /* HUDと同じダークガラス調でフィールドに馴染ませる */
+    background: radial-gradient(circle at 35% 28%, rgba(70, 82, 68, .55), rgba(8, 12, 10, .78) 70%);
+    backdrop-filter: blur(6px);
+    border: 1.5px solid rgba(255, 225, 170, .42);
+    color: #ffeccf;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .14);
+  }
+  body.explore-mode #btn-boss {
+    border-color: rgba(255, 120, 100, .6);
+    color: #ffd9cc;
+    background: radial-gradient(circle at 35% 28%, rgba(90, 40, 30, .6), rgba(14, 6, 5, .8) 70%);
+  }
+  body.explore-mode #btn-explore:disabled {
+    background: radial-gradient(circle at 35% 28%, rgba(40, 46, 52, .5), rgba(8, 10, 14, .72) 70%);
+    border-color: rgba(140, 150, 160, .3);
+    color: #7b8694;
   }
   body.explore-mode #btn-explore .ico, body.explore-mode #btn-boss .ico { width: 28px; height: 28px; }
   body.explore-mode #btn-explore::before, body.explore-mode #btn-boss::before {
-    content: ''; position: absolute; inset: -8px; border-radius: 50%;
-    border: 2px dashed rgba(255, 210, 120, .6);
+    content: ''; position: absolute; inset: -7px; border-radius: 50%;
+    border: 1.5px dashed rgba(255, 220, 160, .3);
     animation: fabSpin 16s linear infinite;
   }
   body.explore-mode #btn-boss::before { border-color: rgba(255, 130, 110, .7); animation-duration: 6s; }
   body.explore-mode #btn-explore::after, body.explore-mode #btn-boss::after {
     content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
-    background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,.55) 50%, transparent 60%);
+    background: linear-gradient(120deg, transparent 42%, rgba(255,245,220,.22) 50%, transparent 58%);
     background-size: 260% 260%; background-position: 190% 190%;
     animation: fabShine 3.4s ease-in-out infinite;
   }
-  body.explore-mode #btn-explore:not(:disabled) { animation: fabPulse 1.7s infinite; }
+  body.explore-mode #btn-explore:not(:disabled) { animation: fabPulse 2s infinite; }
   body.explore-mode #btn-explore:disabled::before { animation-play-state: paused; border-color: rgba(140,150,160,.4); }
   body.explore-mode #btn-explore:disabled::after { display: none; }
   @keyframes fabSpin { to { transform: rotate(360deg); } }
   @keyframes fabShine { 0%, 52% { background-position: 190% 190%; } 86%, 100% { background-position: -90% -90%; } }
   @keyframes fabPulse {
-    0%, 100% { box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 14px rgba(255,106,0,.35); }
-    50% { box-shadow: 0 10px 24px rgba(0,0,0,.55), 0 0 32px rgba(255,150,0,.75); }
+    0%, 100% { box-shadow: 0 10px 24px rgba(0,0,0,.5), 0 0 8px rgba(255,210,150,.15), inset 0 1px 0 rgba(255,255,255,.14); }
+    50% { box-shadow: 0 10px 24px rgba(0,0,0,.5), 0 0 20px rgba(255,210,150,.4), inset 0 1px 0 rgba(255,255,255,.14); }
   }
   .fab-cost {
     position: absolute; top: 2px; right: 6px; z-index: 2;
