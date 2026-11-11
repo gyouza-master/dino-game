@@ -1227,6 +1227,13 @@
 </div>
 
 <script src="three.min.js"></script>
+<script src="js/post/CopyShader.js"></script>
+<script src="js/post/LuminosityHighPassShader.js"></script>
+<script src="js/post/GammaCorrectionShader.js"></script>
+<script src="js/post/EffectComposer.js"></script>
+<script src="js/post/RenderPass.js"></script>
+<script src="js/post/ShaderPass.js"></script>
+<script src="js/post/UnrealBloomPass.js"></script>
 <script>
 /* ========== マスターデータ ========== */
 const DINOS = [
@@ -1766,7 +1773,7 @@ function stealFromPlayer(lo, hi) {
 // フィールドごとの3D配色（空＝フォグ・地面・木の葉・幹）
 const FIELD_3D = [
   { fog:0x081a0b, ground:0x0e2f16, ground2:0x1a4a22, obj:'tree', leaf:0x1e5c2a, leaf2:0x2e7d32, leaf3:0x14532d, trunk:0x3a2a18, count:44, props:110, fogFar:62, mote:0xffdf8a,
-    tex:'jungle', texTint:0x8da687, jungle:1, rays:1, mist:1, flies:1 },
+    tex:'jungle', texTint:0x8da687, jungle:1, rays:1, mist:1, flies:1, grass:1 },
   { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8, mist:1 },
   { fog:0x2a0f08, ground:0x1a0d0a, ground2:0x2a140c, obj:'rock', leaf:0x4a2a20, leaf2:0x5c3626, leaf3:0x332016, trunk:0x331a12, count:34, props:44, fogFar:55, mote:0xff9a3c },
   { fog:0x0a1c30, ground:0x0e2238, ground2:0x14304a, obj:'tree', leaf:0x1d5c3a, leaf2:0x2a7d4a, leaf3:0x14402a, trunk:0x4a3826, count:30, props:56, fogFar:60, mote:0xcfe8ff },
@@ -1812,8 +1819,16 @@ function init3D() {
     sun.shadow.bias = -0.0005;
     scn.add(sun);
     scn.add(sun.target);
-    T3 = { renderer, scn, cam, sun, group: null, trees: [], ground: null, boss: null,
-           rays: null, mists: null, flies: null, path: null,
+    // ブルーム（光のにじみ）：ポストプロセスが読み込めた端末だけ有効
+    let composer = null;
+    try {
+      composer = new THREE.EffectComposer(renderer);
+      composer.addPass(new THREE.RenderPass(scn, cam));
+      composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(480, 740), 0.45, 0.55, 0.8));
+      composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
+    } catch (e) { composer = null; }
+    T3 = { renderer, scn, cam, sun, composer, group: null, trees: [], ground: null, boss: null,
+           rays: null, mists: null, flies: null, path: null, grass: null,
            camZ: 0, targetZ: 0, t: 0 };
     resize3D();
     preloadTreeTex(); // 木の切り抜き画像があれば読み込んでおく
@@ -1828,6 +1843,10 @@ function resize3D() {
   const w = box.clientWidth, h = box.clientHeight;
   if (!w || !h) return;
   T3.renderer.setSize(w, h, false);
+  if (T3.composer) {
+    T3.composer.setSize(w, h);
+    if (T3.composer.setPixelRatio) T3.composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  }
   T3.cam.aspect = w / h;
   T3.cam.updateProjectionMatrix();
 }
@@ -1841,6 +1860,29 @@ function MAT(color) {
     _matCache[color].color.convertSRGBToLinear(); // sRGB出力でも色が淡くならないように
   }
   return _matCache[color];
+}
+/* ===== 風：頂点シェーダーに揺れを注入（葉・ビルボード・草で式を変える） ===== */
+const WIND_UNI = { value: 0 };
+function windify(mat, ampExpr) {
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uWindT = WIND_UNI;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uWindT;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
+        'float sway_ = sin(uWindT*1.3 + position.x*0.7 + position.z*0.5) + 0.5*sin(uWindT*2.7 + position.z*1.7);\n' +
+        'transformed.x += sway_ * (' + ampExpr + ');');
+  };
+  mat.customProgramCacheKey = () => 'wind:' + ampExpr;
+  return mat;
+}
+const _wmatCache = {};
+function WMAT(color) { // 揺れる葉っぱ用マテリアル
+  if (!_wmatCache[color]) {
+    const m = new THREE.MeshLambertMaterial({ color });
+    m.color.convertSRGBToLinear();
+    _wmatCache[color] = windify(m, '0.06 * (position.y + 0.6)');
+  }
+  return _wmatCache[color];
 }
 function leafColor(cfg) {
   const r = Math.random();
@@ -1867,7 +1909,7 @@ function makeTree(cfg) {
     const blobs = 3 + (Math.random() < 0.5 ? 1 : 0);
     for (let i = 0; i < blobs; i++) {
       const r = 1.1 + Math.random() * 0.9;
-      const b = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), MAT(leafColor(cfg)));
+      const b = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), WMAT(leafColor(cfg)));
       b.scale.set(r, r * 0.78, r);
       b.position.set((Math.random() - 0.5) * 1.3, trunkH + 0.5 + Math.random() * 1.1, (Math.random() - 0.5) * 1.3);
       b.rotation.y = Math.random() * 3;
@@ -1882,7 +1924,7 @@ function makeTree(cfg) {
     let y = trunkH, r = 1.5 + Math.random() * 0.5;
     for (let i = 0; i < 3; i++) {
       const h = 1.7 + Math.random() * 0.7;
-      const c = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 7)), MAT(leafColor(cfg)));
+      const c = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 7)), WMAT(leafColor(cfg)));
       c.scale.set(r, h, r); c.position.y = y + h / 2;
       g.add(c);
       y += h * 0.55; r *= 0.68;
@@ -1896,7 +1938,7 @@ function makeTree(cfg) {
       g.add(seg); x += lean * 0.6; y += 1.2;
     }
     for (let i = 0; i < 6; i++) {
-      const f = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 5)), MAT(leafColor(cfg)));
+      const f = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 5)), WMAT(leafColor(cfg)));
       f.scale.set(0.55, 2.6, 0.55);
       const a = (i / 6) * Math.PI * 2;
       f.position.set(x + Math.cos(a) * 0.9, y + 0.7, Math.sin(a) * 0.9);
@@ -1923,7 +1965,7 @@ function makeProp(cfg) {
   // 下草・シダ・茂み・倒木などの小物
   const r = Math.random();
   if (r < 0.34) { // 茂み
-    const b = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), MAT(leafColor(cfg)));
+    const b = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), WMAT(leafColor(cfg)));
     b.scale.set(0.7 + Math.random() * 0.7, 0.5 + Math.random() * 0.4, 0.7 + Math.random() * 0.7);
     b.position.y = 0.35;
     return b;
@@ -1931,7 +1973,7 @@ function makeProp(cfg) {
   if (r < 0.62) { // シダ：平たい円錐を放射状に
     const g = new THREE.Group();
     for (let i = 0; i < 5; i++) {
-      const f = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 5)), MAT(leafColor(cfg)));
+      const f = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 5)), WMAT(leafColor(cfg)));
       f.scale.set(0.28, 1.3 + Math.random() * 0.5, 0.28);
       const a = (i / 5) * Math.PI * 2;
       f.position.set(Math.cos(a) * 0.32, 0.42, Math.sin(a) * 0.32);
@@ -1943,7 +1985,7 @@ function makeProp(cfg) {
   if (r < 0.82) { // 草むら：小さい円錐の束
     const g = new THREE.Group();
     for (let i = 0; i < 4; i++) {
-      const c = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 5)), MAT(leafColor(cfg)));
+      const c = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 5)), WMAT(leafColor(cfg)));
       c.scale.set(0.16, 0.6 + Math.random() * 0.5, 0.16);
       c.position.set((Math.random() - 0.5) * 0.5, 0.3, (Math.random() - 0.5) * 0.5);
       c.rotation.z = (Math.random() - 0.5) * 0.4;
@@ -2030,8 +2072,9 @@ function preloadTreeTex() {
 const _bbMats = {};
 function billboardMat(n) {
   if (!_bbMats[n]) {
-    _bbMats[n] = new THREE.MeshLambertMaterial({
-      map: _treeTex[n], alphaTest: 0.45, side: THREE.DoubleSide });
+    _bbMats[n] = windify(new THREE.MeshLambertMaterial({
+      map: _treeTex[n], alphaTest: 0.45, side: THREE.DoubleSide }),
+      '0.05 * uv.y * uv.y'); // 根本は固定、梢ほど大きく揺れる
   }
   return _bbMats[n];
 }
@@ -2101,7 +2144,7 @@ function makeGiantTree(cfg) {
   }
   for (let i = 0; i < 4; i++) { // 高い樹冠
     const r = 2.2 + Math.random() * 1.6;
-    const bl = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), MAT(leafColor(cfg)));
+    const bl = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 1)), WMAT(leafColor(cfg)));
     bl.scale.set(r, r * 0.6, r);
     bl.position.set((Math.random() - 0.5) * 3, h + (Math.random() - 0.3) * 1.6, (Math.random() - 0.5) * 3);
     g.add(bl);
@@ -2122,8 +2165,8 @@ function makeGodRay() {
   // 木漏れ日の光芒（加算合成の半透明コーン）
   const m = new THREE.Mesh(
     GEO('ray', () => new THREE.ConeGeometry(1, 1, 8, 1, true)),
-    new THREE.MeshBasicMaterial({ color: 0xfff3c4, transparent: true, opacity: 0.03,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    new THREE.MeshBasicMaterial({ color: 0xfff3c4, transparent: true, opacity: 0.02,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); // フォグに溶けるように
   m.scale.set(0.8 + Math.random() * 1.1, 11 + Math.random() * 4, 0.8 + Math.random() * 1.1);
   m.rotation.z = -0.3; // 太陽の向きに傾ける
   m.userData.ph = Math.random() * 10;
@@ -2147,6 +2190,31 @@ function makeMist() {
   sp.position.set(sp.userData.bx, 0.9, -Math.random() * WORLD_DEPTH);
   return sp;
 }
+let _grassMat = null;
+function makeGrassChunk(cfg) {
+  // 地面を埋める草（GPUインスタンシングで1400本を1描画）
+  const N = 1400;
+  const geo = GEO('grassBlade', () => { const g = new THREE.ConeGeometry(0.05, 0.6, 4); g.translate(0, 0.3, 0); return g; });
+  if (!_grassMat) _grassMat = windify(new THREE.MeshLambertMaterial({ color: 0xffffff }), '0.5 * max(position.y, 0.0)');
+  const m = new THREE.InstancedMesh(geo, _grassMat, N);
+  const o = new THREE.Object3D();
+  const col = new THREE.Color();
+  const shades = [cfg.leaf, cfg.leaf2, cfg.leaf3];
+  for (let i = 0; i < N; i++) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    o.position.set(side * (2.5 + Math.random() * 14), 0, -Math.random() * WORLD_DEPTH);
+    o.rotation.y = Math.random() * Math.PI;
+    const s = 0.7 + Math.random() * 1.3;
+    o.scale.set(s, s * (0.7 + Math.random() * 0.9), s);
+    o.updateMatrix();
+    m.setMatrixAt(i, o.matrix);
+    col.setHex(pick(shades)).convertSRGBToLinear();
+    col.multiplyScalar(0.75 + Math.random() * 0.5);
+    m.setColorAt(i, col);
+  }
+  m.frustumCulled = false;
+  return m;
+}
 function makeButterfly(camZ) {
   // 羽ばたく蝶（2枚のヒンジ付き羽）
   const g = new THREE.Group();
@@ -2168,7 +2236,7 @@ function build3DWorld(ai) {
   const cfg = FIELD_3D[ai];
   const area = AREAS[ai];
   T3.scn.fog = new THREE.Fog(cfg.fog, 3, cfg.fogFar);
-  T3.scn.background = null; // 空はCSSグラデーション（エリアの景色）を見せる
+  T3.scn.background = new THREE.Color(cfg.fog).convertSRGBToLinear(); // ブルーム使用時は透過不可のためフォグ色で塗る
   const group = new THREE.Group();
 
   const ground = new THREE.Mesh(
@@ -2222,6 +2290,14 @@ function build3DWorld(ai) {
       T3.trees.push(gt);
       group.add(gt);
     }
+  }
+  // 草原（2チャンクを交互に前へ送って無限に続ける）
+  T3.grass = null;
+  if (cfg.grass) {
+    T3.grass = [makeGrassChunk(cfg), makeGrassChunk(cfg)];
+    T3.grass[0].position.z = T3.camZ;
+    T3.grass[1].position.z = T3.camZ - WORLD_DEPTH;
+    T3.grass.forEach(g => group.add(g));
   }
   // 木漏れ日の光芒
   T3.rays = null;
@@ -2344,7 +2420,7 @@ function loop3D() {
 
   // 木漏れ日：ゆっくり明滅しながらカメラに追随
   if (T3.rays) for (const r of T3.rays) {
-    r.material.opacity = 0.014 + (Math.sin(T3.t * 0.5 + r.userData.ph) + 1) * 0.013;
+    r.material.opacity = 0.007 + (Math.sin(T3.t * 0.5 + r.userData.ph) + 1) * 0.007;
     if (r.position.z > T3.camZ + 4) {
       r.position.z -= WORLD_DEPTH;
       r.position.x = (Math.random() - 0.5) * 12;
@@ -2369,6 +2445,12 @@ function loop3D() {
       u.by = f.position.y;
     }
   }
+  // 草原チャンク：通り過ぎたら前方へ送る＋風の時間を進める
+  if (T3.grass) for (const g of T3.grass) {
+    if (g.position.z - WORLD_DEPTH > T3.camZ + 4) g.position.z -= WORLD_DEPTH * 2;
+  }
+  WIND_UNI.value = T3.t;
+
   // 踏み分け道と太陽（影の光源）もカメラに追随
   if (T3.path) T3.path.position.z = T3.camZ - WORLD_DEPTH;
   if (T3.sun) {
@@ -2395,7 +2477,8 @@ function loop3D() {
     if (Math.abs(c.s.position.x) > 11) { T3.scn.remove(c.s); T3.crossing = null; }
   }
 
-  T3.renderer.render(T3.scn, T3.cam);
+  if (T3.composer) T3.composer.render();
+  else T3.renderer.render(T3.scn, T3.cam);
 }
 
 function setupScenery() {
