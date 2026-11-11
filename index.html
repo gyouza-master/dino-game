@@ -627,25 +627,27 @@
   @keyframes gateRumble { 0%,100% { transform: translate(0,0); } 25% { transform: translate(1.5px,-1px); } 75% { transform: translate(-1.5px,1.5px); } }
   .gate-door {
     position: absolute; top: 0; bottom: 0; width: 50.5%;
-    background:
-      radial-gradient(circle at 24px 26px, rgba(255,255,255,.07) 2px, transparent 3px) 0 0/52px 58px,
-      linear-gradient(180deg, transparent 17%, #39465c 17%, #222c3c 20.5%, transparent 20.5%),
-      linear-gradient(180deg, transparent 76%, #39465c 76%, #222c3c 79.5%, transparent 79.5%),
-      linear-gradient(100deg, #2b3546 0%, #1a2230 45%, #222c3c 70%, #171e2a 100%);
-    box-shadow: inset 0 0 60px rgba(0,0,0,.55);
+    /* 本物のゲート画像を左右半分ずつ使用（読み込み失敗時は下地色） */
+    background-color: #1a2230;
+    background-image: url('images/gate-door.jpg');
+    background-size: 200% 100%;
+    box-shadow: inset 0 0 60px rgba(0,0,0,.45);
     transition: transform 1s cubic-bezier(.75,0,.25,1);
     will-change: transform;
   }
-  .gate-door.left { left: 0; }
-  .gate-door.right { right: 0; }
-  .gate-door::before {
-    content: ''; position: absolute; top: 0; bottom: 0; width: 30px;
-    background: repeating-linear-gradient(45deg, #e8b33a 0 13px, #171c26 13px 26px);
-    box-shadow: inset 0 0 12px rgba(0,0,0,.65);
-    filter: brightness(.92);
+  .gate-door.left { left: 0; background-position: left center; }
+  .gate-door.right { right: 0; background-position: right center; }
+  /* SSR確定演出：警告灯が赤く明滅 */
+  .gfx-gate.danger .gate-seam {
+    background: #ff3d3d;
+    box-shadow: 0 0 18px #ff3d3d, 0 0 44px rgba(255,61,61,.6);
   }
-  .gate-door.left::before { right: 0; }
-  .gate-door.right::before { left: 0; }
+  .gfx-gate.danger::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,40,30,.4), transparent 55%);
+    animation: dangerPulse .4s infinite alternate;
+  }
+  @keyframes dangerPulse { from { opacity: .3; } to { opacity: 1; } }
   .gfx-gate.open .gate-door.left { transform: translateX(-104%); }
   .gfx-gate.open .gate-door.right { transform: translateX(104%); }
   .gate-seam {
@@ -2585,16 +2587,22 @@ function rollGacha() {
   gachaGlowColor = '#9fb6cc';
 
   // ===== 第1幕：隔離ゲートが開く =====
-  const GATE_MS = 1750;
-  gate.classList.remove('hidden', 'open', 'rumble');
+  const GATE_MS = rarity === 'SSR' ? 2450 : 1750; // SSRは警告演出ぶん長め
+  gate.classList.remove('hidden', 'open', 'rumble', 'danger');
   hint.textContent = '隔離ゲート 起動…（タップでスキップ）';
   sfx('alert');
   gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
   const at = (ms, fn) => gachaFxTimers.push(setTimeout(fn, ms));
   at(300, () => { gate.classList.add('rumble'); hint.textContent = 'ゴゴゴゴ…'; });
-  at(850, () => { gate.classList.remove('rumble'); gate.classList.add('open'); sfx('gate'); hint.textContent = 'ゲート 開放…！'; });
+  if (rarity === 'SSR') {
+    // SSR確定演出：開く前に警告灯が真っ赤に明滅
+    at(700, () => { gate.classList.add('danger'); hint.textContent = '⚠ 警告：凶暴な個体を検知！！'; sfx('alert'); });
+    at(1100, () => { sfx('alert'); });
+  }
+  at(GATE_MS - 900, () => { gate.classList.remove('rumble'); gate.classList.add('open'); sfx('gate'); hint.textContent = 'ゲート 開放…！'; });
   at(GATE_MS, () => {
     gate.classList.add('hidden');
+    gate.classList.remove('danger');
     egg.classList.remove('hidden');
     glow.style.background = '#5b6b82';
     hint.textContent = '…なにかが うごいた！（タップでスキップ）';
