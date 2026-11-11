@@ -590,6 +590,13 @@
   .fslot.r-SSR .pad { background: radial-gradient(ellipse at center, rgba(255,95,30,.9) 0%, rgba(255,61,0,.38) 55%, transparent 72%); animation: padPulse 1.05s infinite alternate; }
   .fslot.r-SR img { filter: drop-shadow(0 0 10px rgba(255,180,0,.6)) drop-shadow(0 8px 8px rgba(0,0,0,.7)); }
   .fslot.r-SSR img { filter: drop-shadow(0 0 14px rgba(255,80,20,.75)) drop-shadow(0 8px 8px rgba(0,0,0,.7)); }
+  /* 台座は恐竜に隠れやすいので、スロット全体の後ろにも後光を出す */
+  .fslot.r-SR::before, .fslot.r-SSR::before {
+    content: ''; position: absolute; inset: -6px; border-radius: 16px; pointer-events: none;
+    animation: padPulse 1.5s infinite alternate;
+  }
+  .fslot.r-SR::before { background: radial-gradient(ellipse at 50% 78%, rgba(255,180,0,.5), rgba(255,150,0,.14) 55%, transparent 75%); }
+  .fslot.r-SSR::before { background: radial-gradient(ellipse at 50% 78%, rgba(255,80,25,.6), rgba(255,61,0,.18) 55%, transparent 75%); animation-duration: 1.05s; }
   @keyframes padPulse { from { opacity: .7; } to { opacity: 1; } }
   /* 恐竜を選ぶリスト：SR/SSRは枠がオーラで脈打つ */
   .mslot.r-SR { border-color: #ffb300; animation: srAura 1.6s infinite alternate; }
@@ -1021,9 +1028,9 @@
   }
   @keyframes sheen { 0%, 55% { left: -60%; } 85%, 100% { left: 130%; } }
   .dino-card.r-SSR { animation: ssrglow 1.6s infinite alternate; }
-  @keyframes ssrglow { from { box-shadow: 0 0 8px rgba(255,61,0,.4); } to { box-shadow: 0 0 20px rgba(255,61,0,.85); } }
+  @keyframes ssrglow { from { box-shadow: 0 0 12px rgba(255,61,0,.55); } to { box-shadow: 0 0 28px rgba(255,61,0,.95); } }
   .dino-card.r-SR { animation: srglow 1.6s infinite alternate; }
-  @keyframes srglow { from { box-shadow: 0 0 8px rgba(255,179,0,.4); } to { box-shadow: 0 0 20px rgba(255,190,40,.85); } }
+  @keyframes srglow { from { box-shadow: 0 0 12px rgba(255,179,0,.5); } to { box-shadow: 0 0 28px rgba(255,190,40,.95); } }
 
   /* ===== ひっさつカットイン ===== */
   #cutin {
