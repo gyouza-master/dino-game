@@ -930,6 +930,30 @@
   }
   .cutin-name { font-size: 13px; font-weight: 900; color: #ffb3a0; margin-top: 4px; text-shadow: 0 2px 2px #000; }
 
+  /* ===== デイリーミッション／アリーナ ===== */
+  #mission-modal {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(0, 0, 0, .72);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  #mission-modal.hidden { display: none; }
+  .mission-box {
+    width: 100%; max-width: 420px;
+    background: linear-gradient(180deg, #1a2230, #0c1018);
+    border: 1px solid #3a455a; border-radius: 14px;
+    padding: 16px; box-shadow: 0 18px 44px rgba(0,0,0,.6);
+    animation: bang .3s;
+  }
+  .arena-card { border-color: #8c37c9; box-shadow: 0 0 12px rgba(140,55,201,.3); }
+  .arena-rank {
+    font-size: 11px; font-weight: 900; color: #3a2000;
+    background: linear-gradient(180deg, #ffd24a, #e08a00);
+    border-radius: 999px; padding: 2px 10px; margin-left: 6px;
+    vertical-align: 2px;
+  }
+  .terrain-note { font-size: 10px; font-weight: bold; color: #7ee8a2; margin-top: 4px; }
+
   /* ===== 図鑑マイルストーン ===== */
   .mile-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,.08); font-size: 12px; }
   .mile-row:last-child { border-bottom: none; }
@@ -997,13 +1021,16 @@
 
     <!-- ===== 探索タブ ===== -->
     <section id="tab-explore">
-      <div class="panel" style="padding:10px 12px 12px">
+      <div class="panel">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
           <div>
             <span class="area-name" id="area-name"></span>
             <span class="small" id="area-progress-text" style="margin-left:6px"></span>
           </div>
-          <button class="btn-mini" onclick="switchTab('field')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg> 移動</button>
+          <div style="display:flex; gap:6px">
+            <button class="btn-mini" onclick="openMissions()" style="position:relative">📋 ミッション<span class="nav-badge hidden" id="badge-mission" style="position:absolute; top:-2px; right:-2px">●</span></button>
+            <button class="btn-mini" onclick="switchTab('field')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg> 移動</button>
+          </div>
         </div>
 
         <div class="trail">
@@ -1156,6 +1183,16 @@
   <!-- ===== フィニッシュ演出 ===== -->
   <div id="finish-fx" class="hidden"><div class="finish-text">FINISH!!</div></div>
 
+  <!-- ===== デイリーミッション ===== -->
+  <div id="mission-modal" class="hidden" onclick="closeMissions()">
+    <div class="mission-box" onclick="event.stopPropagation()">
+      <h2>📋 デイリーミッション</h2>
+      <div class="small" style="margin-bottom:8px">毎日リセット。クリアして報酬をゲットしよう！</div>
+      <div id="mission-list"></div>
+      <button class="btn btn-sub" style="margin-top:10px" onclick="closeMissions()">とじる</button>
+    </div>
+  </div>
+
   <!-- ===== DNA解析ラボ ===== -->
   <div id="dna-lab" class="hidden" onclick="closeDnaLab()">
     <div class="lab-grid"></div>
@@ -1213,23 +1250,23 @@ const TYPE_BEATS = { meat:'plant', plant:'aqua', aqua:'meat' };
 const DINO_MAP = Object.fromEntries(DINOS.map(d => [d.id, d]));
 
 const AREAS = [
-  { name:'ジャングル', desc:'生い茂る木々の間に小型恐竜の気配がする…', icon:'🌴',
+  { name:'ジャングル', terrain:'plant', desc:'生い茂る木々の間に小型恐竜の気配がする…', icon:'🌴',
     pool:['compso','ovi','para'], rare:['raptor'],
     boss:{ name:'ボス・ラプトル', dino:'raptor', hp:300, atk:10 },
     scenery:{ bg:'linear-gradient(180deg,#0d2414,#071509 70%,#04100a)', back:'🌴 🌳 🌴 🌳', front:'🌿 🌾 🍃 🌿' } },
-  { name:'霧の湿地帯', desc:'深い霧の向こうから重い足音が聞こえる…', icon:'🌫️',
+  { name:'霧の湿地帯', terrain:'aqua', desc:'深い霧の向こうから重い足音が聞こえる…', icon:'🌫️',
     pool:['para','stego','raptor'], rare:['tri'],
     boss:{ name:'あばれトリケラ', dino:'tri', hp:650, atk:14 },
     scenery:{ bg:'linear-gradient(180deg,#18212a,#0c1216 70%,#080d10)', back:'🌫️ 🌲 🌫️ 🌲', front:'🌾 🪵 🌾 🌾' } },
-  { name:'灼熱の火山帯', desc:'マグマのそばは凶暴な肉食恐竜のなわばりだ！', icon:'🌋',
+  { name:'灼熱の火山帯', terrain:'meat', desc:'マグマのそばは凶暴な肉食恐竜のなわばりだ！', icon:'🌋',
     pool:['stego','raptor','tri','anky'], rare:['carno','brachio'],
     boss:{ name:'炎のカルノ', dino:'carno', hp:1300, atk:18 },
     scenery:{ bg:'linear-gradient(180deg,#2a0f08,#160705 70%,#0e0504)', back:'🌋 🪨 🌋 🪨', front:'🔥 🪨 🔥 🌋' } },
-  { name:'嵐の海岸', desc:'荒れ狂う海に巨大な影が泳いでいる…', icon:'🌊',
+  { name:'嵐の海岸', terrain:'aqua', desc:'荒れ狂う海に巨大な影が泳いでいる…', icon:'🌊',
     pool:['anky','ptera','carno'], rare:['spino','mosa'],
     boss:{ name:'海帝モサ', dino:'mosa', hp:2600, atk:24 },
     scenery:{ bg:'linear-gradient(180deg,#0a1c30,#060f1c 70%,#040a14)', back:'⛈️ 🌊 ⛈️ 🌊', front:'🌊 🪸 🌊 🐚' } },
-  { name:'禁断の孤島', desc:'ここが最後の地。王者が君を待っている。', icon:'🏝️',
+  { name:'禁断の孤島', terrain:'meat', desc:'ここが最後の地。王者が君を待っている。', icon:'🏝️',
     pool:['ptera','carno','spino','brachio','mosa'], rare:['trex'],
     boss:{ name:'キング・ティラノ', dino:'trex', hp:5000, atk:32 },
     scenery:{ bg:'linear-gradient(180deg,#1c0f2a,#100618 70%,#0a0410)', back:'🏔️ 🌴 🏔️ 🌴', front:'🦴 🌿 🦴 🌿' } },
@@ -1350,6 +1387,8 @@ function defaultSave() {
     team: [],           // バトルチーム（id配列・最大3、空なら自動編成）
     decks: [[], [], []], // デッキプリセット（3つ）
     deckIdx: 0,          // 使用中のデッキ番号
+    arenaRank: 1,        // アリーナの現在ランク
+    missions: null,      // デイリーミッション {date, list:[{key,prog,claimed}]}
   };
 }
 function save() { localStorage.setItem('dinoDominionSave', JSON.stringify(S)); }
@@ -1486,11 +1525,12 @@ function renderTeam() {
   }).join('') : '<div class="small">まだ恐竜がいない。図鑑で復元しよう！</div>';
 }
 function teamPower() { return teamIds().reduce((sum, id) => sum + dinoPower(id), 0); }
-// タイプ相性込みのチームパワー（有利×1.5／不利×0.75）
-function effTeamPower(oppType) {
+// タイプ相性込みのチームパワー（有利×1.5／不利×0.75）＋地形一致ボーナス（×1.3）
+function effTeamPower(oppType, terrain) {
   return Math.round(teamIds().reduce((sum, id) => {
     const t = DINO_MAP[id].type;
-    const m = TYPE_BEATS[t] === oppType ? 1.5 : TYPE_BEATS[oppType] === t ? 0.75 : 1;
+    let m = TYPE_BEATS[t] === oppType ? 1.5 : TYPE_BEATS[oppType] === t ? 0.75 : 1;
+    if (terrain && t === terrain) m *= 1.3; // この地形と相性のいいタイプは力を増す
     return sum + dinoPower(id) * m;
   }, 0));
 }
@@ -1679,6 +1719,7 @@ function gainDna(id, mult) {
   const d = DINO_MAP[id];
   const [lo, hi] = DNA_PCT[d.rarity];
   const pct = Math.max(1, Math.round(rand(lo, hi) * (mult || 1)));
+  mProg('dna');
   const isRare = d.rarity === 'SR' || d.rarity === 'SSR';
 
   if (S.restored[id] !== undefined) {
@@ -2131,6 +2172,7 @@ function explore() {
   S.progress[ai] = Math.min(100, S.progress[ai] + rand(4, 8));
   toastQueue = []; // 通知は結果ドン！の後まで溜める（ネタバレ防止）
   gainExp(rand(8, 15));
+  mProg('explore');
 
   let res;
   const r = Math.random() * 100;
@@ -2140,6 +2182,7 @@ function explore() {
   } else if (r < 58) {
     const c = rand(20, 60);
     S.coins += c;
+    mProg('coin', c);
     res = { art: bigIcon('coin', '#ffd24a'), text:`<span class="c-coin">${c}コインを拾った！</span>`, sub:`所持コイン ${S.coins}`, fx:'coin' };
   } else if (r < 65) {
     S.keys++;
@@ -2150,6 +2193,7 @@ function explore() {
   } else if (r < 74) {
     const c = rand(80, 150);
     S.coins += c;
+    mProg('coin', c);
     res = { art: bigIcon('coin', '#ffd24a'), text:`<span class="c-rare">お宝ザクザク！<br>${c}コイン獲得！</span>`, sub:`所持コイン ${S.coins}`, rare:true, fx:'coin', fxN:14 };
   } else if (r < 82) {
     // 恐竜ハンター乱入！
@@ -2222,9 +2266,10 @@ function startBattle(opp) {
   document.getElementById('battle-box').classList.toggle('hunter', opp.type === 'hunter');
   document.getElementById('b-boss-name').textContent = opp.title;
   document.getElementById('b-boss-art').innerHTML = opp.art;
+  const terrainNote = opp.terrain ? `<br>地形効果：${TYPE_INFO[opp.terrain].icon}${TYPE_INFO[opp.terrain].name}タイプの力が増す（×1.3）` : '';
   document.getElementById('b-type').innerHTML =
-    `敵タイプ：${ti.icon}${ti.name}　<span class="c-rare">${gi.icon}${gi.name}タイプが有利！</span>`;
-  document.getElementById('b-log').textContent = `チームパワー ${effTeamPower(opp.dtype)} でたたかえ！`;
+    `敵タイプ：${ti.icon}${ti.name}　<span class="c-rare">${gi.icon}${gi.name}タイプが有利！</span>${terrainNote}`;
+  document.getElementById('b-log').textContent = `チームパワー ${effTeamPower(opp.dtype, opp.terrain)} でたたかえ！`;
   document.getElementById('btn-attack').disabled = false;
   document.getElementById('btn-flee').textContent = opp.type === 'hunter' ? 'にげる（少し奪われる）' : 'にげる';
   document.getElementById('battle-modal').classList.remove('hidden');
@@ -2240,6 +2285,7 @@ function openBossBattle() {
     title: `${area.boss.name}（${area.name}）`,
     art: dinoArtHTML(area.boss.dino, wildAlt(area.boss.dino)),
     dtype: DINO_MAP[area.boss.dino].type,
+    terrain: area.terrain,
     hp: area.boss.hp, atk: area.boss.atk,
   });
 }
@@ -2252,9 +2298,62 @@ function openHunterBattle() {
     title: `${name}（DNA強奪犯）`,
     art: bigIcon('hunter', '#c77dff'),
     dtype: pick(['meat', 'plant', 'aqua']),
+    terrain: area.terrain,
     hp: Math.round(area.boss.hp * 0.35),
     atk: Math.round(area.boss.atk * 0.7),
   });
+}
+
+/* ========== アリーナ（CPUライバルとのランク戦） ========== */
+const ARENA_NAMES = ['見習いテイマー ポポ', '荒くれ者 ガルシア', '恐竜使い ガウ', '牙の女王 リザ', '鋼鉄のドレイク', '深淵の支配者 ヴォルド'];
+function arenaOpponent() {
+  const r = S.arenaRank;
+  const d = DINOS[(r * 5 + 3) % DINOS.length]; // ランクごとにエース恐竜が変わる
+  return {
+    name: ARENA_NAMES[(r - 1) % ARENA_NAMES.length],
+    dino: d.id, dtype: d.type,
+    hp: 250 + r * 160,
+    atk: 9 + r * 2,
+  };
+}
+function openArenaBattle() {
+  if (teamPower() <= 0) { toast('⚠️ 恐竜がいない！図鑑でDNAから復元しよう！'); return; }
+  tickStamina();
+  if (S.stamina < 10) { toast('💤 スタミナが足りない…（10必要）'); return; }
+  if (S.stamina >= S.maxStamina) S.lastStamina = Date.now();
+  S.stamina -= 10;
+  save();
+  const o = arenaOpponent();
+  startBattle({
+    type: 'arena',
+    name: o.name,
+    title: `${o.name}（アリーナ ランク${S.arenaRank}）`,
+    art: dinoArtHTML(o.dino),
+    dtype: o.dtype,
+    terrain: null, // アリーナは中立地形
+    hp: o.hp, atk: o.atk,
+  });
+}
+function winArenaBattle() {
+  renderBattle();
+  document.getElementById('btn-attack').disabled = true;
+  document.getElementById('btn-skill').classList.add('hidden');
+  document.getElementById('b-log').textContent = `🏆 ${battle.opp.name} に勝利！！`;
+  const r = S.arenaRank;
+  const coins = 150 + r * 50;
+  S.coins += coins;
+  mProg('coin', coins);
+  mProg('arena');
+  let extra = '';
+  if (r % 3 === 0) { S.tickets++; extra = '　🎫チケット+1！'; }
+  S.arenaRank++;
+  toast(`🏆 <span class="c-rare">アリーナ ランク${r}を突破！</span>　${coins}コイン${extra}`);
+  gainExp(30 + r * 10);
+  save();
+  setTimeout(() => {
+    closeBattle();
+    showStage(bigIcon('trophy', '#ffd24a'), `<span class="c-rare">ランク${r} 突破！</span>`, `次はランク${r + 1}の強敵が待つ…`);
+  }, 1500);
 }
 function renderBattleTeam() {
   const el = document.getElementById('b-team');
@@ -2322,13 +2421,15 @@ function finishWin() {
   setTimeout(() => {
     fx.classList.add('hidden');
     if (!battle) return;
-    battle.opp.type === 'hunter' ? winHunterBattle() : winBossBattle();
+    battle.opp.type === 'hunter' ? winHunterBattle()
+      : battle.opp.type === 'arena' ? winArenaBattle()
+      : winBossBattle();
   }, 950);
 }
 function attack() {
   if (!battle || battle.finishing) return;
   const crit = Math.random() < 0.1;
-  const dmg = Math.max(1, Math.round(effTeamPower(battle.opp.dtype) * (0.9 + Math.random() * 0.4) * (crit ? 2 : 1)));
+  const dmg = Math.max(1, Math.round(effTeamPower(battle.opp.dtype, battle.opp.terrain) * (0.9 + Math.random() * 0.4) * (crit ? 2 : 1)));
   battle.hp -= dmg;
   sfx(crit ? 'crit' : 'hit');
   battle.gauge = Math.min(100, battle.gauge + rand(16, 24));
@@ -2374,7 +2475,7 @@ function skillAttack() {
     cut.classList.add('hidden');
     skillBusy = false;
     if (!battle) return; // カットイン中に逃げていたら何もしない
-    const dmg = Math.round(effTeamPower(battle.opp.dtype) * 3);
+    const dmg = Math.round(effTeamPower(battle.opp.dtype, battle.opp.terrain) * 3);
     battle.hp -= dmg;
     dmgPop(dmg, true);
     flameBurst(document.getElementById('b-boss-art'), 190);
@@ -2394,6 +2495,7 @@ function winBossBattle() {
   const coinReward = 200 * (ai + 1);
   S.coins += coinReward;
   S.keys += 2;
+  mProg('coin', coinReward);
   toast(`🏆 <span class="c-rare">${area.boss.name} 撃破！</span>　${coinReward}コイン＆鍵2本ゲット！`);
   if (!S.cleared[ai]) {
     S.cleared[ai] = true;
@@ -2425,6 +2527,8 @@ function winHunterBattle() {
   const coinReward = 100 * (ai + 1);
   S.coins += coinReward;
   S.tickets++;
+  mProg('hunter');
+  mProg('coin', coinReward);
   toast(`💥 <span class="c-rare">${battle.opp.name}を撃退！</span>　${coinReward}コインを取り返した！`);
   toast('🎫 <span class="c-key">ガチャチケットを奪い取った！</span>');
   const loot = gainDna(pick(area.pool.concat(area.rare)), 2); // 相手が持っていたDNAを奪う
@@ -2444,6 +2548,9 @@ function loseBattle() {
   if (battle.opp.type === 'hunter') {
     msg = stealFromPlayer(10, 20);
     document.getElementById('b-log').textContent = `😵 やられた…${msg}`;
+  } else if (battle.opp.type === 'arena') {
+    msg = null;
+    document.getElementById('b-log').textContent = '😵 敗北…ランクはそのまま。鍛えて再挑戦だ！';
   } else {
     msg = null;
     document.getElementById('b-log').textContent = '😵 やられた…恐竜を強化して再挑戦だ！';
@@ -2506,6 +2613,7 @@ function openChest() {
   }
   chestBusy = true;
   S.keys--;
+  mProg('chest');
   save();
   renderAll();
   const em = document.getElementById('chest-emoji');
@@ -2578,6 +2686,7 @@ function rollGacha() {
   }
   gachaBusy = true;
   S.tickets--;
+  mProg('gacha');
   save();
   renderAll();
   sfx('ticket');
@@ -2833,6 +2942,82 @@ function checkDaily() {
   }, 400);
 }
 
+/* ========== デイリーミッション ========== */
+const MISSION_POOL = [
+  { key:'explore', desc:'探索で奥へ進む',       target:10,  icon:'🔍' },
+  { key:'dna',     desc:'DNAを採取する',        target:5,   icon:'🧬' },
+  { key:'hunter',  desc:'ハンターを撃退する',   target:1,   icon:'🥷' },
+  { key:'chest',   desc:'宝箱を開ける',         target:1,   icon:'🎁' },
+  { key:'gacha',   desc:'ガチャを回す',         target:1,   icon:'🥚' },
+  { key:'coin',    desc:'コインを集める',       target:300, icon:'🪙' },
+  { key:'arena',   desc:'アリーナで勝利する',   target:1,   icon:'⚔️' },
+];
+const MISSION_REWARDS = [
+  { desc:'🎫 チケット×1', give: () => { S.tickets += 1; } },
+  { desc:'🗝️ 鍵×1',       give: () => { S.keys += 1; } },
+  { desc:'🪙 300コイン',   give: () => { S.coins += 300; } },
+];
+function ensureMissions() {
+  const today = dateStr(0);
+  if (S.missions && S.missions.date === today) return;
+  const pool = [...MISSION_POOL];
+  const list = [];
+  for (let i = 0; i < 3; i++) {
+    const m = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    list.push({ key: m.key, prog: 0, claimed: false });
+  }
+  S.missions = { date: today, list };
+  save();
+}
+function mProg(key, n) {
+  if (!S.missions) return;
+  const m = S.missions.list.find(x => x.key === key && !x.claimed);
+  if (!m) return;
+  const def = MISSION_POOL.find(p => p.key === key);
+  const before = m.prog;
+  m.prog = Math.min(def.target, m.prog + (n || 1));
+  if (before < def.target && m.prog >= def.target) {
+    toast(`📋 <span class="c-rare">ミッション達成！</span>「${def.desc}」`);
+    const badge = document.getElementById('badge-mission');
+    if (badge) badge.classList.remove('hidden');
+  }
+}
+function renderMissions() {
+  ensureMissions();
+  const box = document.getElementById('mission-list');
+  box.innerHTML = S.missions.list.map((m, i) => {
+    const def = MISSION_POOL.find(p => p.key === m.key);
+    const done = m.prog >= def.target;
+    return `<div class="mile-row${done && !m.claimed ? ' done' : ''}"><span>${m.claimed ? '✅' : done ? '🎁' : def.icon}</span>` +
+      `<span class="mile-info">${def.desc}（${Math.min(m.prog, def.target)}/${def.target}）<br><span class="small">報酬：${MISSION_REWARDS[i].desc}</span></span>` +
+      (m.claimed ? '<span class="mile-state">受取済</span>'
+        : done ? `<button class="btn-claim" onclick="claimMission(${i})">受け取る</button>`
+        : '<span class="mile-state">挑戦中</span>') +
+      `</div>`;
+  }).join('');
+}
+function claimMission(i) {
+  const m = S.missions && S.missions.list[i];
+  if (!m || m.claimed) return;
+  const def = MISSION_POOL.find(p => p.key === m.key);
+  if (m.prog < def.target) return;
+  m.claimed = true;
+  MISSION_REWARDS[i].give();
+  sfx('win');
+  toast(`🎁 <span class="c-rare">ミッション報酬！</span> ${MISSION_REWARDS[i].desc}`);
+  save();
+  renderMissions();
+  renderHeader();
+}
+function openMissions() {
+  renderMissions();
+  document.getElementById('mission-modal').classList.remove('hidden');
+  document.getElementById('badge-mission').classList.add('hidden');
+}
+function closeMissions() {
+  document.getElementById('mission-modal').classList.add('hidden');
+}
+
 /* ========== 図鑑コンプリート報酬 ========== */
 const DEX_MILESTONES = [
   { n: 3,  label: '3体復元', reward: ICONS.ticket + ' チケット×1', give: () => { S.tickets += 1; } },
@@ -2910,6 +3095,31 @@ function selectArea(i) {
 function renderField() {
   const list = document.getElementById('field-list');
   list.innerHTML = '';
+
+  // アリーナ（CPUライバルとのランク戦）
+  const arena = document.createElement('div');
+  arena.className = 'field-card arena-card';
+  const opp = arenaOpponent();
+  const od = DINO_MAP[opp.dino];
+  arena.innerHTML =
+    `<div class="field-head"><span class="field-icon">⚔️</span>` +
+    `<div><div class="field-name">アリーナ<span class="arena-rank">ランク ${S.arenaRank}</span></div>` +
+    `<div class="field-desc">腕自慢のテイマーと勝ち抜き戦。勝つほど敵は強くなる（地形効果なしの真剣勝負）</div></div></div>` +
+    `<div class="field-pool-label">次の相手</div>` +
+    `<div style="display:flex; align-items:center; gap:10px; margin-top:4px">` +
+    `<span class="pool-art">${dinoArtHTML(opp.dino)}</span>` +
+    `<span class="small">${opp.name}／エース：${od.name}（${TYPE_INFO[opp.dtype].icon}${TYPE_INFO[opp.dtype].name}）／HP ${opp.hp}</span></div>`;
+  const abtn = document.createElement('button');
+  abtn.className = 'btn btn-boss';
+  abtn.style.animation = 'none';
+  abtn.style.marginTop = '10px';
+  abtn.style.padding = '12px';
+  abtn.style.fontSize = '15px';
+  abtn.textContent = '⚔️ 挑戦する（スタミナ-10）';
+  abtn.onclick = openArenaBattle;
+  arena.appendChild(abtn);
+  list.appendChild(arena);
+
   AREAS.forEach((a, i) => {
     const locked = i > 0 && !S.cleared[i - 1];
     const card = document.createElement('div');
@@ -2940,7 +3150,8 @@ function renderField() {
       `<div class="field-prog"><div class="bar-outer"><div class="bar-inner bar-field" style="width:${S.progress[i]}%"></div></div>` +
       `<span class="pct">探索率 ${S.progress[i]}%</span></div>` +
       `<div class="field-pool-label">出現DNA</div>` +
-      `<div class="field-pool">${poolHTML}<span class="pool-rare" style="color:#ffd24a">${ICONS.bolt}</span>${rareHTML}</div>`;
+      `<div class="field-pool">${poolHTML}<span class="pool-rare" style="color:#ffd24a">${ICONS.bolt}</span>${rareHTML}</div>` +
+      `<div class="terrain-note">地形効果：${TYPE_INFO[a.terrain].icon}${TYPE_INFO[a.terrain].name}タイプの力が増す（×1.3）</div>`;
 
     const btn = document.createElement('button');
     btn.className = 'btn ' + (i === S.areaIdx ? 'btn-gold' : 'btn-sub');
@@ -3058,6 +3269,7 @@ tickStamina();
 init3D();
 renderAll();
 checkDaily();
+ensureMissions();
 // 毎秒：スタミナ回復チェック＋ヘッダーとボタンだけ更新（図鑑は画像チラつき防止のため触らない）
 setInterval(() => { tickStamina(); renderHeader(); updateExploreBtn(); }, 1000);
 </script>
