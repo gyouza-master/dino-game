@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>ダイナソー・ドミニオン</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#10141c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="images/icon-192.png">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
@@ -964,13 +969,13 @@
   .cutin-name { font-size: 13px; font-weight: 900; color: #ffb3a0; margin-top: 4px; text-shadow: 0 2px 2px #000; }
 
   /* ===== デイリーミッション／アリーナ ===== */
-  #mission-modal {
+  #mission-modal, #dino-detail {
     position: fixed; inset: 0; z-index: 80;
     background: rgba(0, 0, 0, .72);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
   }
-  #mission-modal.hidden { display: none; }
+  #mission-modal.hidden, #dino-detail.hidden { display: none; }
   .mission-box {
     width: 100%; max-width: 420px;
     background: linear-gradient(180deg, #1a2230, #0c1018);
@@ -1149,8 +1154,16 @@
           SR のDNA … 12%　／　<span class="c-rare">SSR のDNA … 3%</span>
         </div>
       </div>
-      <div class="panel center">
-        <button class="btn btn-sub" id="btn-reset" onclick="resetGame()">データをはじめから</button>
+      <div class="panel">
+        <h2>⚙️ 設定・データ</h2>
+        <button class="btn btn-sub" id="btn-lowgfx" onclick="toggleLowGfx()">軽量モード</button>
+        <button class="btn btn-sub" style="margin-top:8px" onclick="exportSave()">💾 セーブコードを表示・コピー</button>
+        <div class="hidden" style="margin-top:8px">
+          <textarea id="save-text" style="width:100%; height:72px; background:#05070b; color:#8fa3bd; border:1px solid #2a3547; border-radius:8px; font-size:10px; padding:6px" placeholder="ここにセーブコードを貼り付け"></textarea>
+          <button class="btn btn-sub" style="margin-top:6px" onclick="importSave()">📥 貼り付けたコードを読み込む</button>
+        </div>
+        <button class="btn btn-sub" style="margin-top:8px" onclick="document.getElementById('save-text').parentElement.classList.remove('hidden')">📥 セーブコードを読み込む（機種変・バックアップ）</button>
+        <button class="btn btn-sub" style="margin-top:14px" id="btn-reset" onclick="resetGame()">データをはじめから</button>
       </div>
     </section>
   </main>
@@ -1223,7 +1236,21 @@
       <h2>📋 デイリーミッション</h2>
       <div class="small" style="margin-bottom:8px">毎日リセット。クリアして報酬をゲットしよう！</div>
       <div id="mission-list"></div>
+      <h2 style="margin-top:14px">🏅 実績</h2>
+      <div id="achv-list" style="max-height:32vh; overflow-y:auto"></div>
       <button class="btn btn-sub" style="margin-top:10px" onclick="closeMissions()">とじる</button>
+    </div>
+  </div>
+
+  <!-- ===== 図鑑：恐竜の詳細 ===== -->
+  <div id="dino-detail" class="hidden" onclick="closeDinoDetail()">
+    <div class="mission-box" onclick="event.stopPropagation()" style="text-align:center">
+      <div id="dd-rarity" class="gfx-rarity"></div>
+      <div id="dd-art" style="height:180px; display:flex; align-items:center; justify-content:center"></div>
+      <div id="dd-name" style="font-size:20px; font-weight:900; margin-top:4px"></div>
+      <div id="dd-sub" class="small" style="margin:4px 0 8px"></div>
+      <div id="dd-desc" style="font-size:13px; line-height:1.8; color:#cdd8e4; text-align:left; background:rgba(0,0,0,.3); border-radius:10px; padding:10px 12px"></div>
+      <button class="btn btn-sub" style="margin-top:12px" onclick="closeDinoDetail()">とじる</button>
     </div>
   </div>
 
@@ -1429,7 +1456,11 @@ function defaultSave() {
     decks: [[], [], []], // デッキプリセット（3つ）
     deckIdx: 0,          // 使用中のデッキ番号
     arenaRank: 1,        // アリーナの現在ランク
+    arenaStreak: 0,      // アリーナ連勝数
     missions: null,      // デイリーミッション {date, list:[{key,prog,claimed}]}
+    lowGfx: false,       // 軽量モード（影・ブルームなし）
+    stats: { explores: 0, hunters: 0, gachas: 0, chests: 0, coinsEarned: 0 }, // 実績用の累計
+    achv: {},            // 実績の受取済みマップ
   };
 }
 function save() { localStorage.setItem('dinoDominionSave', JSON.stringify(S)); }
@@ -1666,6 +1697,88 @@ function toggleMute() {
   save();
   document.getElementById('btn-mute').innerHTML = S.muted ? ICONS.speakerOff : ICONS.speaker;
   if (!S.muted) sfx('ticket');
+  startAmbience(); // ミュート切替で環境音も止める/再開する
+}
+
+/* ========== 環境音（フィールドごとに生成するアンビエンス・素材ファイルなし） ========== */
+let AMB = null; // {area, gain, nodes, timers}
+function stopAmbience() {
+  if (!AMB) return;
+  AMB.timers.forEach(clearInterval);
+  const old = AMB;
+  AMB = null;
+  try {
+    const ctx = audioCtx();
+    old.gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+  } catch (e) {}
+  setTimeout(() => old.nodes.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch (e) {} }), 700);
+}
+function ambTone(freq, dur, type, vol, slide) {
+  if (!AMB) return;
+  const ctx = audioCtx(); if (!ctx) return;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(freq, ctx.currentTime);
+  if (slide) o.frequency.linearRampToValueAtTime(Math.max(20, freq + slide), ctx.currentTime + dur);
+  g.gain.setValueAtTime(0.0001, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(vol, ctx.currentTime + dur * 0.25);
+  g.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + dur);
+  o.connect(g); g.connect(AMB.gain);
+  o.start(); o.stop(ctx.currentTime + dur + 0.05);
+}
+function ambChirp() { // 鳥のさえずり
+  const f = 1800 + Math.random() * 1200;
+  ambTone(f, 0.12, 'sine', 0.05, 300);
+  setTimeout(() => ambTone(f * 1.12, 0.1, 'sine', 0.04, -250), 140);
+  if (Math.random() < 0.4) setTimeout(() => ambTone(f * 0.95, 0.09, 'sine', 0.03, 180), 300);
+}
+function ambCricket() { for (let i = 0; i < 4; i++) setTimeout(() => ambTone(4200 + Math.random() * 300, 0.035, 'square', 0.011), i * 70); }
+function ambDrip() { ambTone(900 + Math.random() * 500, 0.18, 'sine', 0.05, -500); }
+function ambRumble() { ambTone(44, 2.4, 'sawtooth', 0.05, -12); }
+function ambHowl() { ambTone(300 + Math.random() * 120, 1.5, 'sine', 0.03, -140); }
+function startAmbience() {
+  if (!S || S.muted) { stopAmbience(); return; }
+  const want = document.body.classList.contains('explore-mode') ? S.areaIdx : -1;
+  if (want < 0) { stopAmbience(); return; }
+  if (AMB && AMB.area === want) return;
+  stopAmbience();
+  const ctx = audioCtx(); if (!ctx) return;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 1.8);
+  gain.connect(ctx.destination);
+  AMB = { area: want, gain, nodes: [gain], timers: [] };
+  // 風のベース：ブラウンノイズ＋ローパス
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < data.length; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; data[i] = last * 3; }
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
+  const nGain = ctx.createGain();
+  src.connect(filt); filt.connect(nGain); nGain.connect(gain);
+  src.start();
+  AMB.nodes.push(src, filt, nGain);
+  if (want === 0) {        // ジャングル：そよ風＋鳥＋虫
+    filt.frequency.value = 420; nGain.gain.value = 0.05;
+    AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.6) ambChirp(); }, 2600));
+    AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.5) ambCricket(); }, 1900));
+  } else if (want === 1) { // 湿地：重い風＋水滴
+    filt.frequency.value = 240; nGain.gain.value = 0.07;
+    AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.6) ambDrip(); }, 2100));
+  } else if (want === 2) { // 火山：地鳴り
+    filt.frequency.value = 95; nGain.gain.value = 0.16;
+    AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.4) ambRumble(); }, 4200));
+  } else if (want === 3) { // 海岸：寄せては返す波
+    filt.frequency.value = 520; nGain.gain.value = 0.05;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.13;
+    const lfoG = ctx.createGain(); lfoG.gain.value = 0.038;
+    lfo.connect(lfoG); lfoG.connect(nGain.gain); lfo.start();
+    AMB.nodes.push(lfo, lfoG);
+  } else {                 // 孤島：不穏な風＋遠くの咆哮
+    filt.frequency.value = 180; nGain.gain.value = 0.08;
+    AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.25) ambHowl(); }, 6000));
+  }
 }
 
 /* ========== パーティクル演出 ========== */
@@ -1808,10 +1921,10 @@ function stealFromPlayer(lo, hi) {
 const FIELD_3D = [
   { fog:0x081a0b, ground:0x0e2f16, ground2:0x1a4a22, obj:'tree', leaf:0x1e5c2a, leaf2:0x2e7d32, leaf3:0x14532d, trunk:0x3a2a18, count:44, props:110, fogFar:62, mote:0xffdf8a,
     tex:'jungle', texTint:0x8da687, jungle:1, rays:1, mist:1, flies:1, grass:1 },
-  { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8, mist:1 },
-  { fog:0x2a0f08, ground:0x1a0d0a, ground2:0x2a140c, obj:'rock', leaf:0x4a2a20, leaf2:0x5c3626, leaf3:0x332016, trunk:0x331a12, count:34, props:44, fogFar:55, mote:0xff9a3c },
-  { fog:0x0a1c30, ground:0x0e2238, ground2:0x14304a, obj:'tree', leaf:0x1d5c3a, leaf2:0x2a7d4a, leaf3:0x14402a, trunk:0x4a3826, count:30, props:56, fogFar:60, mote:0xcfe8ff },
-  { fog:0x160b24, ground:0x170d22, ground2:0x241636, obj:'tree', leaf:0x2a1e44, leaf2:0x3a2a5c, leaf3:0x1e1430, trunk:0x241a30, count:36, props:64, fogFar:50, mote:0xd8b4fe },
+  { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8, mist:1, tex:'swamp', texTint:0x90a090 },
+  { fog:0x2a0f08, ground:0x1a0d0a, ground2:0x2a140c, obj:'rock', leaf:0x4a2a20, leaf2:0x5c3626, leaf3:0x332016, trunk:0x331a12, count:34, props:44, fogFar:55, mote:0xff9a3c, tex:'volcano', texTint:0x9a6a58, bareRock:1 },
+  { fog:0x0a1c30, ground:0x0e2238, ground2:0x14304a, obj:'tree', leaf:0x1d5c3a, leaf2:0x2a7d4a, leaf3:0x14402a, trunk:0x4a3826, count:30, props:56, fogFar:60, mote:0xcfe8ff, tex:'coast', texTint:0xb8ae96 },
+  { fog:0x160b24, ground:0x170d22, ground2:0x241636, obj:'tree', leaf:0x2a1e44, leaf2:0x3a2a5c, leaf3:0x1e1430, trunk:0x241a30, count:36, props:64, fogFar:50, mote:0xd8b4fe, tex:'island', texTint:0x8f7fa6, bareRock:1 },
 ];
 const WORLD_DEPTH = 140; // 木を使い回す奥行き
 let T3 = null;           // 3D一式（WebGLが使えない端末ではnullのまま＝背景グラデのみ）
@@ -1832,11 +1945,11 @@ function init3D() {
   try {
     const canvas = document.getElementById('scene3d');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(S.lowGfx ? 1 : Math.min(window.devicePixelRatio, 2));
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; // 映画的な色調
     renderer.toneMappingExposure = 1.0;
-    renderer.shadowMap.enabled = true; // 本物の影
+    renderer.shadowMap.enabled = !S.lowGfx; // 本物の影（軽量モードではオフ）
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     const scn = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(62, 2, 0.1, 300);
@@ -1856,6 +1969,7 @@ function init3D() {
     // ブルーム（光のにじみ）：ポストプロセスが読み込めた端末だけ有効
     let composer = null;
     try {
+      if (S.lowGfx) throw new Error('low'); // 軽量モードではブルームなし
       composer = new THREE.EffectComposer(renderer);
       composer.addPass(new THREE.RenderPass(scn, cam));
       composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(480, 740), 0.45, 0.55, 0.8));
@@ -1988,7 +2102,7 @@ function makeTree(cfg) {
 }
 function makeRock(cfg) {
   const s = 0.8 + Math.random() * 1.6;
-  const useTex = !!_treeTex.rock_diff; // 実写の苔岩テクスチャがあれば使う
+  const useTex = !!_treeTex.rock_diff && !cfg.bareRock; // 苔岩テクスチャ（火山系は岩肌のまま）
   const rock = new THREE.Mesh(
     useTex ? GEO('rockTex', () => new THREE.IcosahedronGeometry(1, 1))
            : GEO('rock', () => new THREE.IcosahedronGeometry(1, 0)),
@@ -2127,6 +2241,7 @@ function trunkMaterial() {
 function rockMaterial() {
   if (!_rockMat) {
     _rockMat = new THREE.MeshStandardMaterial({ roughness: 1 });
+    _rockMat.color.setHex(0xa8ac9e).convertSRGBToLinear(); // 周囲に馴染むよう少し沈める
     const d = _treeTex.rock_diff, n = _treeTex.rock_nor;
     const rep = t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1.4); };
     if (d) { rep(d); _rockMat.map = d; }
@@ -2659,6 +2774,7 @@ function explore() {
   toastQueue = []; // 通知は結果ドン！の後まで溜める（ネタバレ防止）
   gainExp(rand(8, 15));
   mProg('explore');
+  S.stats.explores++;
 
   let res;
   const r = Math.random() * 100;
@@ -2668,6 +2784,7 @@ function explore() {
   } else if (r < 58) {
     const c = rand(20, 60);
     S.coins += c;
+    S.stats.coinsEarned += c;
     mProg('coin', c);
     res = { art: bigIcon('coin', '#ffd24a'), text:`<span class="c-coin">${c}コインを拾った！</span>`, sub:`所持コイン ${S.coins}`, fx:'coin' };
   } else if (r < 65) {
@@ -2679,6 +2796,7 @@ function explore() {
   } else if (r < 74) {
     const c = rand(80, 150);
     S.coins += c;
+    S.stats.coinsEarned += c;
     mProg('coin', c);
     res = { art: bigIcon('coin', '#ffd24a'), text:`<span class="c-rare">お宝ザクザク！<br>${c}コイン獲得！</span>`, sub:`所持コイン ${S.coins}`, rare:true, fx:'coin', fxN:14 };
   } else if (r < 82) {
@@ -2700,6 +2818,7 @@ function explore() {
   save();
 
   // ===== 前進＋焦らし演出 =====
+  startAmbience(); // 初回タップ（ユーザー操作）から環境音を開始できる
   exploring = true;
   renderAll(); // スタミナ・道のりは即反映
   advance3D();
@@ -2845,11 +2964,21 @@ function winArenaBattle() {
   const r = S.arenaRank;
   const coins = 150 + r * 50;
   S.coins += coins;
+  S.stats.coinsEarned += coins;
   mProg('coin', coins);
   mProg('arena');
   let extra = '';
   if (r % 3 === 0) { S.tickets++; extra = '　🎫チケット+1！'; }
+  if (r % 5 === 0) { S.tickets++; extra += '　🎉節目ボーナス🎫+1！'; }
   S.arenaRank++;
+  // 連勝ボーナス
+  S.arenaStreak = (S.arenaStreak || 0) + 1;
+  if (S.arenaStreak >= 2) {
+    const sb = 25 * (S.arenaStreak - 1);
+    S.coins += sb;
+    S.stats.coinsEarned += sb;
+    toast(`🔥 <span class="c-rare">${S.arenaStreak}連勝！</span>　ボーナス+${sb}コイン！`);
+  }
   toast(`🏆 <span class="c-rare">アリーナ ランク${r}を突破！</span>　${coins}コイン${extra}`);
   gainExp(30 + r * 10);
   save();
@@ -3015,6 +3144,7 @@ function winBossBattle() {
   const coinReward = 200 * (ai + 1);
   S.coins += coinReward;
   S.keys += 2;
+  S.stats.coinsEarned += coinReward;
   mProg('coin', coinReward);
   toast(`🏆 <span class="c-rare">${area.boss.name} 撃破！</span>　${coinReward}コイン＆鍵2本ゲット！`);
   if (!S.cleared[ai]) {
@@ -3047,6 +3177,8 @@ function winHunterBattle() {
   const coinReward = 100 * (ai + 1);
   S.coins += coinReward;
   S.tickets++;
+  S.stats.hunters++;
+  S.stats.coinsEarned += coinReward;
   mProg('hunter');
   mProg('coin', coinReward);
   toast(`💥 <span class="c-rare">${battle.opp.name}を撃退！</span>　${coinReward}コインを取り返した！`);
@@ -3070,6 +3202,7 @@ function loseBattle() {
     document.getElementById('b-log').textContent = `😵 やられた…${msg}`;
   } else if (battle.opp.type === 'arena') {
     msg = null;
+    S.arenaStreak = 0; // 連勝ストップ
     document.getElementById('b-log').textContent = '😵 敗北…ランクはそのまま。鍛えて再挑戦だ！';
   } else {
     msg = null;
@@ -3135,6 +3268,7 @@ function openChest() {
   }
   chestBusy = true;
   S.keys--;
+  S.stats.chests++;
   mProg('chest');
   save();
   renderAll();
@@ -3208,6 +3342,7 @@ function rollGacha() {
   }
   gachaBusy = true;
   S.tickets--;
+  S.stats.gachas++;
   mProg('gacha');
   save();
   renderAll();
@@ -3533,11 +3668,109 @@ function claimMission(i) {
 }
 function openMissions() {
   renderMissions();
+  renderAchv();
   document.getElementById('mission-modal').classList.remove('hidden');
   document.getElementById('badge-mission').classList.add('hidden');
 }
 function closeMissions() {
   document.getElementById('mission-modal').classList.add('hidden');
+}
+
+/* ========== 図鑑：恐竜の詳細ページ ========== */
+const DINO_DESC = {
+  compso:  'ニワトリほどの小さなハンター。すばしっこく、群れで獲物を追い詰める。最初の相棒として頼れる存在。',
+  ovi:     '「卵泥棒」の濡れ衣で有名だが、実は卵を温める子育て上手だったことが分かっている。',
+  para:    '頭のトサカで仲間と鳴き交わす。その声は霧の湿地の向こうまで届くという。',
+  stego:   '背中の骨板は体温調節に使われたらしい。しっぽの4本スパイクは肉食竜も恐れる武器。',
+  raptor:  '鋭いカギ爪と高い知能で狩りをする俊足のハンター。チームプレイはジャングル随一。',
+  tri:     '3本の角と巨大なフリルを持つ草食の重戦車。本気の突進は誰にも止められない。',
+  anky:    '全身よろいとハンマーのしっぽ。守りの固さは大陸一で、ハンターたちも手を出せない。',
+  ptera:   '大きな翼で風に乗る空の覇者。高く舞い上がり、鋭い目で獲物を見逃さない。',
+  carno:   '額の2本角が特徴の俊足肉食竜。短距離の突進速度は恐竜界でも最速クラス。',
+  spino:   '背中の帆が目印の水辺のハンター。泳ぎが得意で、魚も恐竜も逃さない。',
+  brachio: '見上げるほど長い首で高い梢の葉を食べる。穏やかだが、怒ると大地が揺れる。',
+  mosa:    '海の頂点捕食者。巨大なアゴに捕まったら、どんな獲物も逃れられない。',
+  trex:    '恐竜の王。あらゆる時代を通じて最強と呼ばれる伝説の捕食者。その咆哮は島中に轟く。',
+};
+function openDinoDetail(id) {
+  const d = DINO_MAP[id];
+  document.getElementById('dd-rarity').textContent = '【' + RARITY_NAME[d.rarity] + '】';
+  document.getElementById('dd-rarity').style.background = RARITY_COLOR[d.rarity];
+  document.getElementById('dd-art').innerHTML = dinoArtHTML(id, ownAlt(id));
+  document.getElementById('dd-name').textContent = d.name + (ownAlt(id) ? ' ✨' : '');
+  document.getElementById('dd-sub').innerHTML =
+    `${TYPE_INFO[d.type].icon} ${TYPE_INFO[d.type].name}タイプ　／　${ICONS.bolt} パワー ${dinoPower(id)}` +
+    (ownAlt(id) ? '　／　✨色違い個体' : '');
+  document.getElementById('dd-desc').textContent = DINO_DESC[id] || '';
+  document.getElementById('dino-detail').classList.remove('hidden');
+  sfx('dna');
+}
+function closeDinoDetail() { document.getElementById('dino-detail').classList.add('hidden'); }
+
+/* ========== 実績・称号 ========== */
+const ACHV = [
+  { id:'firstRestore', name:'はじめての復元', desc:'恐竜を1体復元する', reward:'🪙 500コイン', give:() => { S.coins += 500; }, chk:() => Object.keys(S.restored).length >= 1 },
+  { id:'dex5',   name:'駆け出し研究員', desc:'恐竜を5体復元する', reward:'🎫 チケット×1', give:() => { S.tickets += 1; }, chk:() => Object.keys(S.restored).length >= 5 },
+  { id:'dex13',  name:'恐竜王',         desc:'全13体をコンプリート', reward:'🎫 チケット×3', give:() => { S.tickets += 3; }, chk:() => Object.keys(S.restored).length >= 13 },
+  { id:'ssr',    name:'伝説との遭遇',   desc:'ティラノサウルスを仲間にする', reward:'🎫 チケット×2', give:() => { S.tickets += 2; }, chk:() => S.restored.trex !== undefined },
+  { id:'hunter10', name:'ハンターバスター', desc:'ハンターを10人撃退する', reward:'🎫 チケット×2', give:() => { S.tickets += 2; }, chk:() => S.stats.hunters >= 10 },
+  { id:'explore100', name:'ジャングルの住人', desc:'探索を100回おこなう', reward:'🗝️ 鍵×3', give:() => { S.keys += 3; }, chk:() => S.stats.explores >= 100 },
+  { id:'arena5',  name:'闘技場の新星', desc:'アリーナランク5に到達', reward:'🎫 チケット×1', give:() => { S.tickets += 1; }, chk:() => S.arenaRank >= 5 },
+  { id:'arena10', name:'チャンピオン', desc:'アリーナランク10に到達', reward:'🎫 チケット×3', give:() => { S.tickets += 3; }, chk:() => S.arenaRank >= 10 },
+  { id:'gacha10', name:'タマゴ愛好家', desc:'ガチャを10回まわす', reward:'🗝️ 鍵×2', give:() => { S.keys += 2; }, chk:() => S.stats.gachas >= 10 },
+  { id:'coin10k', name:'恐竜長者', desc:'累計1万コインを稼ぐ', reward:'🎫 チケット×2', give:() => { S.tickets += 2; }, chk:() => S.stats.coinsEarned >= 10000 },
+];
+function achvClaimable() { return ACHV.some(a => !S.achv[a.id] && a.chk()); }
+function renderAchv() {
+  const box = document.getElementById('achv-list');
+  if (!box) return;
+  box.innerHTML = ACHV.map((a, i) => {
+    const claimed = !!S.achv[a.id];
+    const done = a.chk();
+    return `<div class="mile-row${done && !claimed ? ' done' : ''}"><span>${claimed ? '✅' : done ? '🏅' : '🔒'}</span>` +
+      `<span class="mile-info"><b>${a.name}</b>　<span class="small">${a.desc}</span><br><span class="small">報酬：${a.reward}</span></span>` +
+      (claimed ? '<span class="mile-state">受取済</span>'
+        : done ? `<button class="btn-claim" onclick="claimAchv(${i})">受け取る</button>`
+        : '<span class="mile-state">未達成</span>') +
+      `</div>`;
+  }).join('');
+}
+function claimAchv(i) {
+  const a = ACHV[i];
+  if (!a || S.achv[a.id] || !a.chk()) return;
+  S.achv[a.id] = true;
+  a.give();
+  sfx('win');
+  toast(`🏅 <span class="c-rare">実績解除「${a.name}」！</span> ${a.reward}`);
+  save();
+  renderAchv();
+  renderHeader();
+}
+
+/* ========== セーブのエクスポート／インポート ========== */
+function exportSave() {
+  const str = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+  const ta = document.getElementById('save-text');
+  ta.value = str;
+  ta.parentElement.classList.remove('hidden');
+  if (navigator.clipboard) navigator.clipboard.writeText(str).then(() => toast('📋 セーブコードをコピーした！'), () => {});
+}
+function importSave() {
+  const str = (document.getElementById('save-text').value || '').trim();
+  if (!str) { toast('⚠️ 枠にセーブコードを貼り付けてから押してね'); return; }
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(str))));
+    if (typeof data.level !== 'number' || !data.restored) throw new Error('bad');
+    localStorage.setItem('dinoDominionSave', JSON.stringify(data));
+    location.reload();
+  } catch (e) { toast('⚠️ セーブコードが正しくないみたい…'); }
+}
+
+/* ========== 軽量モード ========== */
+function toggleLowGfx() {
+  S.lowGfx = !S.lowGfx;
+  save();
+  location.reload(); // 描画設定はリロードで反映
 }
 
 /* ========== 図鑑コンプリート報酬 ========== */
@@ -3603,6 +3836,7 @@ function switchTab(tab) {
   if (tab === 'chest') document.getElementById('badge-chest').classList.add('hidden');
   renderAll();
   if (tab === 'explore') requestAnimationFrame(resize3D);
+  startAmbience(); // 探索中だけフィールドの環境音を流す
 }
 
 /* ========== フィールド選択 ========== */
@@ -3696,6 +3930,9 @@ function renderHeader() {
   document.getElementById('h-stamina-bar').style.width = (S.stamina / S.maxStamina * 100) + '%';
   document.getElementById('h-exp-text').textContent = `${S.exp}/${expNeed()}`;
   document.getElementById('h-exp-bar').style.width = (S.exp / expNeed() * 100) + '%';
+  // 受け取れる実績があればミッションボタンに赤丸
+  const mb = document.getElementById('badge-mission');
+  if (mb && achvClaimable()) mb.classList.remove('hidden');
 }
 
 function updateExploreBtn() {
@@ -3745,6 +3982,8 @@ function renderDex() {
     html += `<div class="dino-type">${TYPE_INFO[d.type].icon} ${TYPE_INFO[d.type].name}</div>`;
     if (owned) {
       html += `<div class="dino-pow">${ICONS.bolt} ${dinoPower(d.id)}</div>`;
+      card.onclick = () => openDinoDetail(d.id); // タップで詳細ページ
+      card.style.cursor = 'pointer';
     } else {
       html += `<div class="dna-mini">🧬 解析 ${have}%</div>`;
       html += `<div class="mini-bar"><div style="width:${have}%"></div></div>`;
@@ -3766,6 +4005,8 @@ function renderChest() {
   document.getElementById('btn-open-chest').disabled = S.keys < 1;
   document.getElementById('btn-buy-key').disabled = S.coins < 500;
   document.getElementById('btn-gacha').disabled = S.tickets < 1;
+  const lg = document.getElementById('btn-lowgfx');
+  if (lg) lg.textContent = `軽量モード：${S.lowGfx ? 'ON（影・ブルームなし）' : 'OFF'}　タップで切替`;
 }
 
 function updatePhase() {
@@ -3792,6 +4033,10 @@ init3D();
 renderAll();
 checkDaily();
 ensureMissions();
+// PWA：サービスワーカー登録（file://のダブルクリック起動では無効）
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 // 毎秒：スタミナ回復チェック＋ヘッダーとボタンだけ更新（図鑑は画像チラつき防止のため触らない）
 setInterval(() => { tickStamina(); renderHeader(); updateExploreBtn(); }, 1000);
 </script>
