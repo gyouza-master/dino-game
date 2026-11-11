@@ -286,7 +286,7 @@
   }
   /* 結果メッセージは中央でなく下部のメッセージ窓に */
   body.explore-mode .stage-content {
-    top: auto; bottom: 156px; left: 12px; right: 12px;
+    top: auto; bottom: 168px; left: 12px; right: 12px;
     transform: none; width: auto;
     display: flex; align-items: center; gap: 10px;
     text-align: left; padding: 8px 12px;
@@ -295,56 +295,43 @@
   body.explore-mode .stage-art img { max-height: 44px; }
   body.explore-mode .stage-art .dino-emoji { font-size: 34px; }
   body.explore-mode .stage-text { margin-top: 0; flex: 1; }
-  /* 進むボタン：探検コンパス風のFAB（回る破線リング＋光のスイープ＋鼓動） */
+  /* 進むボタン：メッセージ窓の下に置く横長バー（丸FAB廃止・窓と被らない配置） */
   body.explore-mode #btn-explore, body.explore-mode #btn-boss {
-    position: fixed; right: max(14px, calc(50vw - 226px)); bottom: 98px; z-index: 30;
-    width: 88px; height: 88px; margin: 0; padding: 0; border-radius: 50%;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    font-size: 13px; line-height: 1;
+    position: fixed; bottom: 100px; z-index: 30;
+    left: max(12px, calc(50vw - 228px)); right: max(12px, calc(50vw - 228px));
+    width: auto; height: 56px; margin: 0; padding: 0 18px; border-radius: 14px;
+    display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px;
+    font-size: 17px; font-weight: 900; line-height: 1;
     /* HUDと同じダークガラス調でフィールドに馴染ませる */
-    background: radial-gradient(circle at 35% 28%, rgba(70, 82, 68, .55), rgba(8, 12, 10, .78) 70%);
+    background: linear-gradient(180deg, rgba(70, 82, 68, .55), rgba(8, 12, 10, .82));
     backdrop-filter: blur(6px);
-    border: 1.5px solid rgba(255, 225, 170, .42);
+    border: 1.5px solid rgba(255, 225, 170, .5); border-bottom-width: 3px;
     color: #ffeccf;
     text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
     box-shadow: 0 10px 24px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .14);
   }
   body.explore-mode #btn-boss {
-    border-color: rgba(255, 120, 100, .6);
+    border-color: rgba(255, 120, 100, .65);
     color: #ffd9cc;
-    background: radial-gradient(circle at 35% 28%, rgba(90, 40, 30, .6), rgba(14, 6, 5, .8) 70%);
+    background: linear-gradient(180deg, rgba(90, 40, 30, .6), rgba(14, 6, 5, .85));
   }
   body.explore-mode #btn-explore:disabled {
-    background: radial-gradient(circle at 35% 28%, rgba(40, 46, 52, .5), rgba(8, 10, 14, .72) 70%);
+    background: linear-gradient(180deg, rgba(40, 46, 52, .5), rgba(8, 10, 14, .78));
     border-color: rgba(140, 150, 160, .3);
     color: #7b8694;
   }
-  body.explore-mode #btn-explore .ico, body.explore-mode #btn-boss .ico { width: 28px; height: 28px; }
-  body.explore-mode #btn-explore::before, body.explore-mode #btn-boss::before {
-    content: ''; position: absolute; inset: -7px; border-radius: 50%;
-    border: 1.5px dashed rgba(255, 220, 160, .3);
-    animation: fabSpin 16s linear infinite;
-  }
-  body.explore-mode #btn-boss::before { border-color: rgba(255, 130, 110, .7); animation-duration: 6s; }
-  body.explore-mode #btn-explore::after, body.explore-mode #btn-boss::after {
-    content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
-    background: linear-gradient(120deg, transparent 42%, rgba(255,245,220,.22) 50%, transparent 58%);
-    background-size: 260% 260%; background-position: 190% 190%;
-    animation: fabShine 3.4s ease-in-out infinite;
-  }
-  body.explore-mode #btn-explore:not(:disabled) { animation: fabPulse 2s infinite; }
-  body.explore-mode #btn-explore:disabled::before { animation-play-state: paused; border-color: rgba(140,150,160,.4); }
-  body.explore-mode #btn-explore:disabled::after { display: none; }
-  @keyframes fabSpin { to { transform: rotate(360deg); } }
-  @keyframes fabShine { 0%, 52% { background-position: 190% 190%; } 86%, 100% { background-position: -90% -90%; } }
-  @keyframes fabPulse {
+  body.explore-mode #btn-explore .ico, body.explore-mode #btn-boss .ico { width: 24px; height: 24px; }
+  body.explore-mode #btn-explore::before, body.explore-mode #btn-boss::before { content: none; }
+  body.explore-mode #btn-explore::after, body.explore-mode #btn-boss::after { content: none; display: none; }
+  body.explore-mode #btn-explore:not(:disabled) { animation: barGlow 2s infinite; }
+  @keyframes barGlow {
     0%, 100% { box-shadow: 0 10px 24px rgba(0,0,0,.5), 0 0 8px rgba(255,210,150,.15), inset 0 1px 0 rgba(255,255,255,.14); }
-    50% { box-shadow: 0 10px 24px rgba(0,0,0,.5), 0 0 20px rgba(255,210,150,.4), inset 0 1px 0 rgba(255,255,255,.14); }
+    50% { box-shadow: 0 10px 24px rgba(0,0,0,.5), 0 0 22px rgba(255,210,150,.45), inset 0 1px 0 rgba(255,255,255,.14); }
   }
   .fab-cost {
-    position: absolute; top: 2px; right: 6px; z-index: 2;
+    position: static; z-index: 2;
     background: linear-gradient(180deg, #35e05a, #0f9e3a); color: #fff;
-    font-size: 10px; font-weight: 900; border-radius: 999px; padding: 2px 6px;
+    font-size: 11px; font-weight: 900; border-radius: 999px; padding: 3px 8px;
     box-shadow: 0 2px 6px rgba(0,0,0,.5); font-style: normal;
   }
 
