@@ -893,6 +893,16 @@
   @keyframes bfLungeD { 0% { transform: none; } 40% { transform: translateY(13px) scale(1.1); } 100% { transform: none; } }
   .bf-hit { animation: bfHit .3s; }
   @keyframes bfHit { 0%, 100% { transform: none; } 25% { transform: translateX(-4px); } 60% { transform: translateX(4px); } }
+  /* 突撃：相手の陣地まで実際に押し込む（移動量はJSが --chx/--chy で渡す） */
+  /* SR/SSRのオーラやリーダーの炎（同特異度）より後に置き、突撃中は突撃アニメを優先させる */
+  .bf-member.bf-charge, #b-boss-art.bf-charge { animation: bfCharge .58s cubic-bezier(.32,.68,.36,1); }
+  @keyframes bfCharge {
+    0% { transform: none; }
+    30% { transform: translate(var(--chx, 0px), var(--chy, -140px)) scale(1.3); }
+    38% { transform: translate(calc(var(--chx, 0px) * 1.06), calc(var(--chy, -140px) * 1.06)) scale(1.33); }
+    56% { transform: translate(var(--chx, 0px), var(--chy, -140px)) scale(1.25); }
+    100% { transform: none; }
+  }
 
   /* ===== バトル全面化（恐竜ドミニオン風：フィールドの3D空間の上で戦う） ===== */
   #battle-modal { padding: 0; background: rgba(0, 0, 0, .28); }
@@ -3119,6 +3129,18 @@ function bfAnim(el, cls) {
   el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
   setTimeout(() => el.classList.remove(cls), 380);
 }
+// 突撃：el が target の手前まで実際に移動して押し込む（着弾は約200ms後）
+function chargeTo(el, target, ratio) {
+  if (!el || !target) return;
+  const a = el.getBoundingClientRect(), b = target.getBoundingClientRect();
+  const dx = (b.left + b.width / 2 - (a.left + a.width / 2)) * (ratio || 0.8);
+  const dy = (b.top + b.height / 2 - (a.top + a.height / 2)) * (ratio || 0.8);
+  el.style.setProperty('--chx', dx.toFixed(0) + 'px');
+  el.style.setProperty('--chy', dy.toFixed(0) + 'px');
+  el.style.zIndex = '40';
+  el.classList.remove('bf-charge'); void el.offsetWidth; el.classList.add('bf-charge');
+  setTimeout(() => { el.classList.remove('bf-charge'); el.style.zIndex = ''; }, 640);
+}
 function renderBattle() {
   // 自軍HPはユニット合計に同期し、各カードのバーも更新
   if (battle.units) {
@@ -3189,36 +3211,42 @@ function attack() {
   attackers.forEach((u, i) => {
     setTimeout(() => {
       if (!battle || battle.finishing) return;
-      const crit = Math.random() < 0.1;
-      const dmg = Math.max(1, Math.round(effUnitPow(u, battle.opp) * (0.85 + Math.random() * 0.3) * (crit ? 1.8 : 1)));
-      battle.hp -= dmg; total += dmg; done++;
-      if (crit) anyCrit = true;
-      battle.gauge = Math.min(100, battle.gauge + rand(4, 7));
-      sfx(crit ? 'crit' : 'hit');
-      bfAnim(memberEl(u.id), 'bf-lunge');
-      // SR/SSRは攻撃エフェクトを格上げ（大きな炎＋画面シェイク＋大ダメージ表示）
-      const rar = DINO_MAP[u.id].rarity;
       const bossArt = document.getElementById('b-boss-art');
-      if (rar === 'SSR') {
-        flameBurst(bossArt, 175);
-        setTimeout(() => flameBurst(bossArt, 120), 90);
-        shakeBattle(true);
-      } else if (rar === 'SR') {
-        flameBurst(bossArt, 125);
-        shakeBattle(false);
-      } else {
-        flameBurst(bossArt, 80);
-      }
-      dmgPop(dmg, crit || rar === 'SR' || rar === 'SSR');
-      if (crit) shakeBattle(true);
-      renderBattle();
-      if (battle.hp <= 0) { battle.busy = false; finishWin(); return; }
-      if (done === attackers.length) {
-        document.getElementById('b-log').textContent = anyCrit
-          ? `💥 クリティカルまじりで ${total} の総ダメージ！`
-          : `チームの総攻撃！ ${total} ダメージ！`;
-        setTimeout(enemyTurn, 430);
-      }
+      // まず相手の陣地まで突撃して押し込む。着弾（約200ms後）にダメージが入る
+      chargeTo(memberEl(u.id), bossArt, 0.8);
+      sfx('step');
+      setTimeout(() => {
+        if (!battle || battle.finishing) return;
+        const crit = Math.random() < 0.1;
+        const dmg = Math.max(1, Math.round(effUnitPow(u, battle.opp) * (0.85 + Math.random() * 0.3) * (crit ? 1.8 : 1)));
+        battle.hp -= dmg; total += dmg; done++;
+        if (crit) anyCrit = true;
+        battle.gauge = Math.min(100, battle.gauge + rand(4, 7));
+        sfx(crit ? 'crit' : 'hit');
+        bfAnim(bossArt, 'bf-hit'); // 敵がのけぞる
+        // SR/SSRは攻撃エフェクトを格上げ（大きな炎＋画面シェイク＋大ダメージ表示）
+        const rar = DINO_MAP[u.id].rarity;
+        if (rar === 'SSR') {
+          flameBurst(bossArt, 175);
+          setTimeout(() => flameBurst(bossArt, 120), 90);
+          shakeBattle(true);
+        } else if (rar === 'SR') {
+          flameBurst(bossArt, 125);
+          shakeBattle(false);
+        } else {
+          flameBurst(bossArt, 80);
+        }
+        dmgPop(dmg, crit || rar === 'SR' || rar === 'SSR');
+        if (crit) shakeBattle(true);
+        renderBattle();
+        if (battle.hp <= 0) { battle.busy = false; finishWin(); return; }
+        if (done === attackers.length) {
+          document.getElementById('b-log').textContent = anyCrit
+            ? `💥 クリティカルまじりで ${total} の総ダメージ！`
+            : `チームの総攻撃！ ${total} ダメージ！`;
+          setTimeout(enemyTurn, 430);
+        }
+      }, 200);
     }, i * 140);
   });
 }
@@ -3228,24 +3256,30 @@ function enemyTurn() {
   if (!alive.length) { loseBattle(); return; }
   // 敵の反撃は味方1体を狙う（その恐竜のHPが削れ、倒れれば火力も落ちる）
   const target = alive[Math.floor(Math.random() * alive.length)];
-  const crit = Math.random() < 0.1;
-  const dmg = Math.max(1, Math.round(battle.opp.atk * 3.2 * (0.85 + Math.random() * 0.3) * (crit ? 1.5 : 1)));
-  target.hp -= dmg;
-  sfx('hit');
-  bfAnim(document.getElementById('b-boss-art'), 'bf-lunge-d');
+  const bossArt = document.getElementById('b-boss-art');
   const tEl = memberEl(target.id);
-  bfAnim(tEl, 'bf-hit');
-  flameBurst(tEl, 90);
-  dmgPop(dmg, crit, tEl);
-  const td = DINO_MAP[target.id];
-  document.getElementById('b-log').textContent =
-    (crit ? `💥 ${battle.opp.name}のクリティカル反撃！` : `${battle.opp.name}の反撃！`) +
-    ` ${td.name} に ${dmg} ダメージ！` +
-    (target.hp <= 0 ? ` ${td.name}が たおれた…！` : '');
-  renderBattle();
-  if (battle.units.every(u => u.hp <= 0)) { loseBattle(); return; }
-  battle.busy = false;
-  document.getElementById('btn-attack').disabled = false;
+  // 敵もこちら側へ突撃して押し込んでくる。着弾（約200ms後）にダメージが入る
+  chargeTo(bossArt, tEl, 0.72);
+  sfx('step');
+  setTimeout(() => {
+    if (!battle || battle.finishing) return;
+    const crit = Math.random() < 0.1;
+    const dmg = Math.max(1, Math.round(battle.opp.atk * 3.2 * (0.85 + Math.random() * 0.3) * (crit ? 1.5 : 1)));
+    target.hp -= dmg;
+    sfx('hit');
+    bfAnim(tEl, 'bf-hit');
+    flameBurst(tEl, 90);
+    dmgPop(dmg, crit, tEl);
+    const td = DINO_MAP[target.id];
+    document.getElementById('b-log').textContent =
+      (crit ? `💥 ${battle.opp.name}のクリティカル反撃！` : `${battle.opp.name}の反撃！`) +
+      ` ${td.name} に ${dmg} ダメージ！` +
+      (target.hp <= 0 ? ` ${td.name}が たおれた…！` : '');
+    renderBattle();
+    if (battle.units.every(u => u.hp <= 0)) { loseBattle(); return; }
+    battle.busy = false;
+    document.getElementById('btn-attack').disabled = false;
+  }, 200);
 }
 const SKILL_NAMES = { meat: 'デス・クラッシュ', plant: 'グランド・クエイク', aqua: 'メガ・ウェーブ' };
 let skillBusy = false; // カットイン中は二重発動しない
@@ -3274,6 +3308,7 @@ function skillAttack() {
     if (!battle) return; // カットイン中に逃げていたら何もしない
     const lu = battle.units ? battle.units[0] : null;
     const dmg = lu ? Math.round(effUnitPow(lu, battle.opp) * 3.5) : Math.round(effTeamPower(battle.opp.dtype, battle.opp.terrain) * 3);
+    chargeTo(memberEl(leader), document.getElementById('b-boss-art'), 0.85); // リーダーが突撃して叩き込む
     battle.hp -= dmg;
     dmgPop(dmg, true);
     flameBurst(document.getElementById('b-boss-art'), 190);
