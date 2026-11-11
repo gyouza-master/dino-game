@@ -637,7 +637,16 @@
   }
   .gate-door.left { left: 0; background-position: left center; }
   .gate-door.right { right: 0; background-position: right center; }
-  /* SSR確定演出：警告灯が赤く明滅 */
+  /* レアリティ警告演出：金=SR以上確定、赤=SSR確定 */
+  .gfx-gate.warn .gate-seam {
+    background: #ffd24a;
+    box-shadow: 0 0 18px #ffd24a, 0 0 44px rgba(255,210,74,.6);
+  }
+  .gfx-gate.warn::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,190,40,.4), transparent 55%);
+    animation: dangerPulse .5s infinite alternate;
+  }
   .gfx-gate.danger .gate-seam {
     background: #ff3d3d;
     box-shadow: 0 0 18px #ff3d3d, 0 0 44px rgba(255,61,61,.6);
@@ -2587,22 +2596,35 @@ function rollGacha() {
   gachaGlowColor = '#9fb6cc';
 
   // ===== 第1幕：隔離ゲートが開く =====
-  const GATE_MS = rarity === 'SSR' ? 2450 : 1750; // SSRは警告演出ぶん長め
-  gate.classList.remove('hidden', 'open', 'rumble', 'danger');
+  // ゲート警告のパターン抽選（金=SR以上確定、赤=SSR確定。過大表示はしない）
+  // R: 無演出のみ／SR: 無演出50%・金50%／SSR: 赤40%・金→赤昇格40%・無演出20%
+  let gateFx = 'none';
+  if (rarity === 'SR') gateFx = Math.random() < 0.5 ? 'gold' : 'none';
+  if (rarity === 'SSR') { const gr = Math.random(); gateFx = gr < 0.4 ? 'red' : gr < 0.8 ? 'escalate' : 'none'; }
+  const GATE_MS = gateFx === 'none' ? 1750 : gateFx === 'escalate' ? 3150 : 2450;
+
+  gate.classList.remove('hidden', 'open', 'rumble', 'warn', 'danger');
   hint.textContent = '隔離ゲート 起動…（タップでスキップ）';
   sfx('alert');
   gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
   const at = (ms, fn) => gachaFxTimers.push(setTimeout(fn, ms));
   at(300, () => { gate.classList.add('rumble'); hint.textContent = 'ゴゴゴゴ…'; });
-  if (rarity === 'SSR') {
-    // SSR確定演出：開く前に警告灯が真っ赤に明滅
+  if (gateFx === 'gold' || gateFx === 'escalate') {
+    at(700, () => { gate.classList.add('warn'); hint.textContent = '⚠ 反応あり：大型個体を検知'; sfx('alert'); });
+  }
+  if (gateFx === 'red') {
     at(700, () => { gate.classList.add('danger'); hint.textContent = '⚠ 警告：凶暴な個体を検知！！'; sfx('alert'); });
-    at(1100, () => { sfx('alert'); });
+    at(1100, () => sfx('alert'));
+  }
+  if (gateFx === 'escalate') {
+    // 金→赤への昇格演出
+    at(1650, () => { gate.classList.remove('warn'); gate.classList.add('danger'); hint.textContent = '⚠⚠ 警告：檻が破られる…！！'; sfx('alert'); sfx('hit'); });
+    at(2050, () => sfx('alert'));
   }
   at(GATE_MS - 900, () => { gate.classList.remove('rumble'); gate.classList.add('open'); sfx('gate'); hint.textContent = 'ゲート 開放…！'; });
   at(GATE_MS, () => {
     gate.classList.add('hidden');
-    gate.classList.remove('danger');
+    gate.classList.remove('warn', 'danger');
     egg.classList.remove('hidden');
     glow.style.background = '#5b6b82';
     hint.textContent = '…なにかが うごいた！（タップでスキップ）';
