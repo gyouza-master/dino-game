@@ -1765,8 +1765,9 @@ function stealFromPlayer(lo, hi) {
 /* ========== 3Dシーン（three.js：奥へ進む一人称視点） ========== */
 // フィールドごとの3D配色（空＝フォグ・地面・木の葉・幹）
 const FIELD_3D = [
-  { fog:0x081a0b, ground:0x0e2f16, ground2:0x1a4a22, obj:'tree', leaf:0x1e5c2a, leaf2:0x2e7d32, leaf3:0x14532d, trunk:0x3a2a18, count:40, props:80, fogFar:55, mote:0xffdf8a },
-  { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8 },
+  { fog:0x081a0b, ground:0x0e2f16, ground2:0x1a4a22, obj:'tree', leaf:0x1e5c2a, leaf2:0x2e7d32, leaf3:0x14532d, trunk:0x3a2a18, count:44, props:110, fogFar:62, mote:0xffdf8a,
+    tex:'jungle', texTint:0x8da687, jungle:1, rays:1, mist:1, flies:1 },
+  { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8, mist:1 },
   { fog:0x2a0f08, ground:0x1a0d0a, ground2:0x2a140c, obj:'rock', leaf:0x4a2a20, leaf2:0x5c3626, leaf3:0x332016, trunk:0x331a12, count:34, props:44, fogFar:55, mote:0xff9a3c },
   { fog:0x0a1c30, ground:0x0e2238, ground2:0x14304a, obj:'tree', leaf:0x1d5c3a, leaf2:0x2a7d4a, leaf3:0x14402a, trunk:0x4a3826, count:30, props:56, fogFar:60, mote:0xcfe8ff },
   { fog:0x160b24, ground:0x170d22, ground2:0x241636, obj:'tree', leaf:0x2a1e44, leaf2:0x3a2a5c, leaf3:0x1e1430, trunk:0x241a30, count:36, props:64, fogFar:50, mote:0xd8b4fe },
@@ -1791,15 +1792,28 @@ function init3D() {
     const canvas = document.getElementById('scene3d');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; // 映画的な色調
+    renderer.toneMappingExposure = 1.0;
+    renderer.shadowMap.enabled = true; // 本物の影
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     const scn = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(62, 2, 0.1, 300);
     cam.position.set(0, 2.4, 0);
-    scn.add(new THREE.HemisphereLight(0xbfe3c0, 0x1c2b16, 0.75));
-    scn.add(new THREE.AmbientLight(0xffffff, 0.22));
-    const sun = new THREE.DirectionalLight(0xffe9b0, 0.85);
-    sun.position.set(4, 10, 2);
+    scn.add(new THREE.HemisphereLight(0xbfe3c0, 0x1c2b16, 0.62));
+    scn.add(new THREE.AmbientLight(0xffffff, 0.16));
+    const sun = new THREE.DirectionalLight(0xffe9b0, 0.95);
+    sun.position.set(7, 14, -6);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
+    sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+    sun.shadow.camera.near = 1; sun.shadow.camera.far = 60;
+    sun.shadow.bias = -0.0005;
     scn.add(sun);
-    T3 = { renderer, scn, cam, group: null, trees: [], ground: null, boss: null,
+    scn.add(sun.target);
+    T3 = { renderer, scn, cam, sun, group: null, trees: [], ground: null, boss: null,
+           rays: null, mists: null, flies: null, path: null,
            camZ: 0, targetZ: 0, t: 0 };
     resize3D();
     window.addEventListener('resize', resize3D);
@@ -1821,7 +1835,10 @@ function resize3D() {
 const _geoCache = {}, _matCache = {};
 function GEO(key, make) { if (!_geoCache[key]) _geoCache[key] = make(); return _geoCache[key]; }
 function MAT(color) {
-  if (!_matCache[color]) _matCache[color] = new THREE.MeshLambertMaterial({ color });
+  if (!_matCache[color]) {
+    _matCache[color] = new THREE.MeshLambertMaterial({ color });
+    _matCache[color].color.convertSRGBToLinear(); // sRGB出力でも色が淡くならないように
+  }
   return _matCache[color];
 }
 function leafColor(cfg) {
@@ -1965,6 +1982,7 @@ function groundTexture(cfg) {
   ctx.fillRect(112, 0, 32, 256); // 中央の道筋
   ctx.globalAlpha = 1;
   const tex = new THREE.CanvasTexture(c);
+  tex.encoding = THREE.sRGBEncoding;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(5, 26);
   return tex;
@@ -1980,11 +1998,119 @@ function makeMotes(cfg) {
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  if (!_mistTex) makeMist(); // 丸い粒用テクスチャを用意
   const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-    color: cfg.mote, size: 0.14, transparent: true, opacity: 0.75,
+    color: cfg.mote, size: 0.16, map: _mistTex, transparent: true, opacity: 0.65,
     blending: THREE.AdditiveBlending, depthWrite: false }));
   pts.userData.base = pos.slice();
   return pts;
+}
+
+/* ===== リアル化パーツ：本物テクスチャの地面・巨木・木漏れ日・霧・蝶 ===== */
+function groundMaterial(cfg) {
+  if (!cfg.tex) return new THREE.MeshLambertMaterial({ map: groundTexture(cfg) });
+  // 写真由来のPBRテクスチャ（読み込み完了までは手描きテクスチャでつなぐ）
+  const mat = new THREE.MeshStandardMaterial({ map: groundTexture(cfg), roughness: 1, metalness: 0 });
+  const rep = t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(9, 46); t.anisotropy = 4; };
+  const L = new THREE.TextureLoader();
+  L.load(`images/tex/${cfg.tex}_diff.jpg`, t => {
+    rep(t); t.encoding = THREE.sRGBEncoding;
+    mat.map = t; mat.color.setHex(cfg.texTint || 0xffffff).convertSRGBToLinear(); mat.needsUpdate = true;
+  }, undefined, () => {});
+  L.load(`images/tex/${cfg.tex}_nor.jpg`, t => {
+    rep(t);
+    mat.normalMap = t; mat.normalScale = new THREE.Vector2(0.9, 0.9); mat.needsUpdate = true;
+  }, undefined, () => {});
+  return mat;
+}
+function makePathStrip() {
+  // 本物テクスチャの上に重ねる「踏み分け道」の薄暗い帯
+  const c = document.createElement('canvas'); c.width = 64; c.height = 8;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 64, 0);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(8,12,6,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 8);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(4.6, WORLD_DEPTH * 2.5),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.02;
+  return m;
+}
+function makeGiantTree(cfg) {
+  // 林冠を作る大樹：板根つきの太い幹＋高い樹冠＋垂れ下がるツル
+  const g = new THREE.Group();
+  const trunkMat = MAT(cfg.trunk);
+  const h = 8 + Math.random() * 4;
+  const trunk = new THREE.Mesh(GEO('gtrunk', () => new THREE.CylinderGeometry(0.32, 0.58, 1, 7)), trunkMat);
+  trunk.scale.y = h; trunk.position.y = h / 2;
+  g.add(trunk);
+  for (let i = 0; i < 4; i++) { // 板根
+    const b = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 5)), trunkMat);
+    b.scale.set(0.22, 1.7, 0.75);
+    const a = Math.random() * Math.PI * 2;
+    b.position.set(Math.cos(a) * 0.45, 0.85, Math.sin(a) * 0.45);
+    b.rotation.y = -a;
+    g.add(b);
+  }
+  for (let i = 0; i < 4; i++) { // 高い樹冠
+    const r = 2.2 + Math.random() * 1.6;
+    const bl = new THREE.Mesh(GEO('canopy', () => new THREE.IcosahedronGeometry(1, 0)), MAT(leafColor(cfg)));
+    bl.scale.set(r, r * 0.6, r);
+    bl.position.set((Math.random() - 0.5) * 3, h + (Math.random() - 0.3) * 1.6, (Math.random() - 0.5) * 3);
+    g.add(bl);
+  }
+  const vines = 2 + rand(0, 2);
+  for (let i = 0; i < vines; i++) { // ツル
+    const len = 2.5 + Math.random() * 3.5;
+    const v = new THREE.Mesh(GEO('vine', () => new THREE.CylinderGeometry(0.035, 0.05, 1, 4)), MAT(cfg.leaf3));
+    v.scale.y = len;
+    v.position.set((Math.random() - 0.5) * 3.4, h - 0.8 - len / 2, (Math.random() - 0.5) * 3.4);
+    v.rotation.z = (Math.random() - 0.5) * 0.12;
+    g.add(v);
+  }
+  g.add(shadowBlob(2.2 + Math.random()));
+  return g;
+}
+function makeGodRay() {
+  // 木漏れ日の光芒（加算合成の半透明コーン）
+  const m = new THREE.Mesh(
+    GEO('ray', () => new THREE.ConeGeometry(1, 1, 8, 1, true)),
+    new THREE.MeshBasicMaterial({ color: 0xfff3c4, transparent: true, opacity: 0.03,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  m.scale.set(0.8 + Math.random() * 1.1, 11 + Math.random() * 4, 0.8 + Math.random() * 1.1);
+  m.rotation.z = -0.3; // 太陽の向きに傾ける
+  m.userData.ph = Math.random() * 10;
+  return m;
+}
+let _mistTex = null;
+function makeMist() {
+  // 地を這う霧（やわらかいスプライト）
+  if (!_mistTex) {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64, 64, 8, 64, 64, 64);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+    _mistTex = new THREE.CanvasTexture(c);
+  }
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: _mistTex, transparent: true, opacity: 0.07 + Math.random() * 0.05, depthWrite: false }));
+  sp.scale.set(9 + Math.random() * 7, 3, 1);
+  sp.userData = { ph: Math.random() * 10, bx: (Math.random() - 0.5) * 10 };
+  sp.position.set(sp.userData.bx, 0.9, -Math.random() * WORLD_DEPTH);
+  return sp;
+}
+function makeButterfly(camZ) {
+  // 羽ばたく蝶（2枚のヒンジ付き羽）
+  const g = new THREE.Group();
+  const col = pick([0x7fd4ff, 0xffb347, 0xff8ad8, 0xc3ff8a]);
+  const wmat = new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide });
+  wmat.color.convertSRGBToLinear();
+  const w1 = new THREE.Mesh(GEO('wingR', () => { const p = new THREE.PlaneGeometry(0.15, 0.1); p.translate(0.075, 0, 0); return p; }), wmat);
+  const w2 = new THREE.Mesh(GEO('wingL', () => { const p = new THREE.PlaneGeometry(0.15, 0.1); p.translate(-0.075, 0, 0); return p; }), wmat);
+  g.add(w1, w2);
+  g.position.set((Math.random() - 0.5) * 5, 1 + Math.random(), camZ - 6 - Math.random() * 18);
+  g.userData = { w1, w2, ph: Math.random() * 10, by: g.position.y };
+  return g;
 }
 
 function build3DWorld(ai) {
@@ -1999,10 +2125,13 @@ function build3DWorld(ai) {
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(90, WORLD_DEPTH * 2.5),
-    new THREE.MeshLambertMaterial({ map: groundTexture(cfg) }));
+    groundMaterial(cfg));
   ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
   group.add(ground);
   T3.ground = ground;
+  T3.path = null;
+  if (cfg.tex) { T3.path = makePathStrip(); group.add(T3.path); }
 
   T3.trees = [];
   for (let i = 0; i < cfg.count; i++) {
@@ -2029,6 +2158,54 @@ function build3DWorld(ai) {
     group.add(far);
     T3.trees.push(far);
   }
+  // ジャングル専用：林冠を作る巨木（ツル付き）
+  if (cfg.jungle) {
+    for (let i = 0; i < 10; i++) {
+      const gt = makeGiantTree(cfg);
+      const side = i % 2 ? -1 : 1;
+      gt.position.x = side * (5.5 + Math.random() * 8.5);
+      gt.position.z = T3.camZ - 6 - Math.random() * WORLD_DEPTH;
+      T3.trees.push(gt);
+      group.add(gt);
+    }
+  }
+  // 木漏れ日の光芒
+  T3.rays = null;
+  if (cfg.rays) {
+    T3.rays = [];
+    for (let i = 0; i < 6; i++) {
+      const r = makeGodRay();
+      r.position.set((Math.random() - 0.5) * 12, r.scale.y * 0.5, T3.camZ - Math.random() * WORLD_DEPTH);
+      T3.rays.push(r);
+      group.add(r);
+    }
+  }
+  // 地を這う霧
+  T3.mists = null;
+  if (cfg.mist) {
+    T3.mists = [];
+    for (let i = 0; i < 6; i++) {
+      const m = makeMist();
+      m.position.z = T3.camZ - Math.random() * WORLD_DEPTH;
+      T3.mists.push(m);
+      group.add(m);
+    }
+  }
+  // 蝶
+  T3.flies = null;
+  if (cfg.flies) {
+    T3.flies = [];
+    for (let i = 0; i < 3; i++) {
+      const f = makeButterfly(T3.camZ);
+      T3.flies.push(f);
+      group.add(f);
+    }
+  }
+  // 木や岩は影を落とす（透明マテリアルと地面は除外）
+  group.traverse(o => {
+    if (o.isMesh && o.material && !o.material.transparent && o !== ground) o.castShadow = true;
+  });
+
   // 漂う光の粒
   T3.motes = makeMotes(cfg);
   T3.motes.position.z = T3.camZ;
@@ -2109,6 +2286,41 @@ function loop3D() {
       pos.array[i * 3 + 1] = base[i * 3 + 1] + Math.sin(T3.t * 0.9 + i * 2.3) * 0.35;
     }
     pos.needsUpdate = true;
+  }
+
+  // 木漏れ日：ゆっくり明滅しながらカメラに追随
+  if (T3.rays) for (const r of T3.rays) {
+    r.material.opacity = 0.014 + (Math.sin(T3.t * 0.5 + r.userData.ph) + 1) * 0.013;
+    if (r.position.z > T3.camZ + 4) {
+      r.position.z -= WORLD_DEPTH;
+      r.position.x = (Math.random() - 0.5) * 12;
+    }
+  }
+  // 地を這う霧：横にゆらゆら漂う
+  if (T3.mists) for (const m of T3.mists) {
+    m.position.x = m.userData.bx + Math.sin(T3.t * 0.18 + m.userData.ph) * 2.4;
+    if (m.position.z > T3.camZ + 8) m.position.z -= WORLD_DEPTH;
+  }
+  // 蝶：羽ばたきながらふらふら飛ぶ
+  if (T3.flies) for (const f of T3.flies) {
+    const u = f.userData;
+    u.w1.rotation.y = Math.sin(T3.t * 16 + u.ph) * 1.05;
+    u.w2.rotation.y = -u.w1.rotation.y;
+    f.position.x += Math.sin(T3.t * 0.6 + u.ph) * 0.012;
+    f.position.y = u.by + Math.sin(T3.t * 1.3 + u.ph * 2) * 0.25;
+    f.position.z += Math.sin(T3.t * 0.23 + u.ph) * 0.02 - 0.004;
+    f.rotation.y = Math.sin(T3.t * 0.6 + u.ph);
+    if (f.position.z > T3.camZ + 2 || f.position.z < T3.camZ - 32) {
+      f.position.set((Math.random() - 0.5) * 6, 1 + Math.random() * 0.8, T3.camZ - 8 - Math.random() * 16);
+      u.by = f.position.y;
+    }
+  }
+  // 踏み分け道と太陽（影の光源）もカメラに追随
+  if (T3.path) T3.path.position.z = T3.camZ - WORLD_DEPTH;
+  if (T3.sun) {
+    T3.sun.position.set(7, 14, T3.camZ - 6);
+    T3.sun.target.position.set(0, 0, T3.camZ - 18);
+    T3.sun.target.updateMatrixWorld();
   }
 
   // ボス：探索率が上がるほど近づいて見える
