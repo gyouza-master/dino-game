@@ -713,6 +713,7 @@
     position: absolute; width: 330px; height: 330px; border-radius: 50%;
     filter: blur(28px); opacity: .55; background: #5b6b82; transition: background .25s;
   }
+  #gacha3d { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
   .gfx-egg { position: relative; z-index: 2; font-size: 92px; color: #ffe9b0; line-height: 1; }
   .gfx-egg.wob { animation: gfxWob .5s infinite; }
   .gfx-egg.frenzy { animation: gfxWob .15s infinite; }
@@ -1388,6 +1389,7 @@
   <!-- ===== ガチャ演出 ===== -->
   <div id="gacha-fx" class="hidden">
     <div class="gfx-glow" id="gfx-glow"></div>
+    <canvas id="gacha3d" style="display:none"></canvas>
     <div class="gfx-egg" id="gfx-egg"></div>
     <div class="gfx-gate hidden" id="gfx-gate">
       <div class="gate-label">DNA CONTAINMENT GATE</div>
@@ -3894,9 +3896,8 @@ function spawnGachaParticle() {
   const egg = document.getElementById('gfx-egg');
   if (!fx || !egg || fx.classList.contains('hidden')) return;
   const fr = fx.getBoundingClientRect();
-  const er = egg.getBoundingClientRect();
-  const cx = er.left - fr.left + er.width / 2;
-  const cy = er.top - fr.top + er.height / 2;
+  const cx = fr.width / 2;
+  const cy = fr.height * 0.45;
   const ang = Math.random() * Math.PI * 2;
   const dist = 130 + Math.random() * 170;
   const sx = cx + Math.cos(ang) * dist;
@@ -3921,6 +3922,152 @@ function spawnGachaParticle() {
   } else {
     setTimeout(() => p.remove(), 800);
   }
+}
+
+/* ========== ガチャ第2幕：3D孵化チャンバー ========== */
+let G3 = null; // false=WebGL不可（従来のアイコン演出に切替）
+function initGacha3D() {
+  if (G3 !== null) return G3;
+  try {
+    const canvas = document.getElementById('gacha3d');
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const scn = new THREE.Scene();
+    const cam = new THREE.PerspectiveCamera(42, 1, 0.1, 60);
+    cam.position.set(0, 2.1, 6.4);
+    cam.lookAt(0, 1.4, 0);
+    const spot = new THREE.SpotLight(0xfff2dc, 1.5, 40, 0.42, 0.75);
+    spot.position.set(0, 9, 2.5);
+    spot.target.position.set(0, 1.4, 0);
+    scn.add(spot); scn.add(spot.target);
+    const rim = new THREE.PointLight(0x9fb6cc, 1.1, 12);
+    rim.position.set(0, 1.8, 3);
+    scn.add(rim);
+    scn.add(new THREE.AmbientLight(0xffffff, 0.08));
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0c1016, roughness: 1 });
+    floorMat.color.convertSRGBToLinear();
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(7, 36), floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    scn.add(floor);
+    const pedMat = new THREE.MeshStandardMaterial({ color: 0x1c222c, roughness: 0.85, metalness: 0.15 });
+    pedMat.color.convertSRGBToLinear();
+    const ped = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.35, 0.5, 26), pedMat);
+    ped.position.y = 0.25;
+    scn.add(ped);
+    // 殻のヒビ（発光テクスチャに描き足していく）
+    const cc = document.createElement('canvas'); cc.width = cc.height = 256;
+    const cctx = cc.getContext('2d');
+    const crackTex = new THREE.CanvasTexture(cc);
+    // 殻のまだら模様
+    const bc = document.createElement('canvas'); bc.width = bc.height = 256;
+    const bctx = bc.getContext('2d');
+    bctx.fillStyle = '#d8ccb2'; bctx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 700; i++) { // 恐竜の卵らしい茶系のまだら
+      bctx.fillStyle = ['#b7a98c', '#c9bda0', '#8d7c5e', '#a3906e'][Math.floor(Math.random() * 4)];
+      bctx.globalAlpha = 0.35 + Math.random() * 0.5;
+      bctx.beginPath(); bctx.arc(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 4.5, 0, 7); bctx.fill();
+    }
+    bctx.globalAlpha = 1;
+    const speckleTex = new THREE.CanvasTexture(bc);
+    speckleTex.encoding = THREE.sRGBEncoding;
+    const eggGeo = new THREE.SphereGeometry(0.85, 36, 26);
+    eggGeo.scale(1, 1.28, 1);
+    const eggMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 0.55,
+      map: speckleTex, bumpMap: speckleTex, bumpScale: 0.02,
+      emissive: 0xffc27a, emissiveMap: crackTex, emissiveIntensity: 0 });
+    const egg = new THREE.Mesh(eggGeo, eggMat);
+    egg.position.y = 1.58;
+    scn.add(egg);
+    G3 = { renderer, scn, cam, egg, eggMat, rim,
+           crack: { ctx: cctx, tex: crackTex, stage: 0 },
+           shards: [], wob: 1, active: false, t: 0 };
+  } catch (e) { G3 = false; }
+  return G3;
+}
+function g3Cracks(stage) {
+  if (!G3) return;
+  const { ctx, tex } = G3.crack;
+  if (stage === 0) { ctx.clearRect(0, 0, 256, 256); G3.crack.stage = 0; tex.needsUpdate = true; return; }
+  for (let i = G3.crack.stage; i < stage; i++) {
+    for (let c = 0; c < 3; c++) { // ジグザグのヒビ
+      let x = 40 + Math.random() * 176, y = 30 + Math.random() * 90;
+      ctx.strokeStyle = 'rgba(255,220,160,1)';
+      ctx.shadowColor = 'rgba(255,180,90,0.9)'; ctx.shadowBlur = 7;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.lineWidth = 2.5 + Math.random() * 1.8;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let seg = 0; seg < 6; seg++) { x += (Math.random() - 0.5) * 38; y += 14 + Math.random() * 18; ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+  }
+  G3.crack.stage = stage;
+  tex.needsUpdate = true;
+}
+function g3Start() {
+  const g = initGacha3D();
+  if (!g) return false;
+  const box = document.getElementById('gacha-fx');
+  g.renderer.setSize(box.clientWidth, box.clientHeight, false);
+  g.cam.aspect = box.clientWidth / box.clientHeight;
+  g.cam.updateProjectionMatrix();
+  g.egg.visible = true;
+  g.eggMat.emissiveIntensity = 0;
+  g.shards.forEach(sh => g.scn.remove(sh));
+  g.shards = [];
+  g3Cracks(0);
+  g.rim.color.set('#9fb6cc');
+  g.wob = 1;
+  g.active = true;
+  document.getElementById('gacha3d').style.display = 'block';
+  requestAnimationFrame(g3Loop);
+  return true;
+}
+function g3SetColor(hex) { if (G3 && G3.active) G3.rim.color.set(hex); }
+function g3Frenzy() { if (G3 && G3.active) { G3.wob = 3.2; G3.eggMat.emissiveIntensity = 1.0; } }
+function g3Stop() {
+  if (G3 && G3.active) { G3.active = false; }
+  const c = document.getElementById('gacha3d');
+  if (c) c.style.display = 'none';
+}
+function g3Burst() {
+  if (!G3 || !G3.active) return;
+  G3.egg.visible = false;
+  for (let i = 0; i < 14; i++) { // 殻の破片が飛び散る
+    const sh = new THREE.Mesh(GEO('shard', () => new THREE.TetrahedronGeometry(0.22)), G3.eggMat.clone());
+    sh.material.emissiveIntensity = 0.35;
+    sh.material.transparent = true;
+    sh.position.copy(G3.egg.position);
+    const a = Math.random() * Math.PI * 2;
+    sh.userData.v = new THREE.Vector3(Math.cos(a) * (1.5 + Math.random() * 2.5), 2.5 + Math.random() * 3.5, Math.sin(a) * (1.2 + Math.random() * 1.8));
+    sh.userData.r = new THREE.Vector3(Math.random() * 9, Math.random() * 9, Math.random() * 9);
+    sh.userData.life = 1;
+    G3.scn.add(sh);
+    G3.shards.push(sh);
+  }
+  setTimeout(g3Stop, 900);
+}
+function g3Loop() {
+  if (!G3 || !G3.active) return;
+  requestAnimationFrame(g3Loop);
+  const g = G3;
+  g.t += 0.016;
+  if (g.egg.visible) {
+    g.egg.rotation.z = Math.sin(g.t * 6 * g.wob) * 0.07 * g.wob;
+    g.egg.position.y = 1.58 + Math.abs(Math.sin(g.t * 3 * g.wob)) * 0.05 * g.wob;
+  }
+  g.shards.forEach(sh => {
+    sh.userData.v.y -= 0.22;
+    sh.position.addScaledVector(sh.userData.v, 0.016);
+    sh.rotation.x += sh.userData.r.x * 0.016;
+    sh.rotation.y += sh.userData.r.y * 0.016;
+    sh.userData.life -= 0.022;
+    sh.material.opacity = Math.max(0, sh.userData.life);
+  });
+  g.renderer.render(g.scn, g.cam);
 }
 
 function rollGacha() {
@@ -3992,7 +4139,7 @@ function rollGacha() {
   at(GATE_MS, () => {
     gate.classList.add('hidden');
     gate.classList.remove('warn', 'danger');
-    egg.classList.remove('hidden');
+    if (!g3Start()) egg.classList.remove('hidden'); // 3Dが使えない端末のみ従来の卵
     glow.style.background = '#5b6b82';
     hint.textContent = '…なにかが うごいた！（タップでスキップ）';
     // 粒子が卵へ集まってくる
@@ -4002,9 +4149,9 @@ function rollGacha() {
 
   // ===== 第2幕：卵の煽り→リビール =====
   const dur = rarity === 'SSR' ? 2600 : rarity === 'SR' ? 2000 : 1400;
-  at(GATE_MS + dur * 0.35, () => { glow.style.background = color; gachaGlowColor = color; hint.textContent = '…！？ ひかってる…！（タップでスキップ）'; sfx('step'); });
-  if (rarity !== 'R') at(GATE_MS + dur * 0.55, () => { glow.style.background = '#5b6b82'; gachaGlowColor = '#9fb6cc'; hint.textContent = 'あれ…？ もどった…？'; });
-  at(GATE_MS + dur * 0.72, () => { glow.style.background = color; gachaGlowColor = color; egg.classList.add('frenzy'); hint.textContent = rarity === 'R' ? 'われる…！' : 'すごい色だ…！！'; sfx('alert'); });
+  at(GATE_MS + dur * 0.35, () => { glow.style.background = color; gachaGlowColor = color; g3SetColor(color); g3Cracks(1); hint.textContent = '…！？ ひかってる…！（タップでスキップ）'; sfx('step'); });
+  if (rarity !== 'R') at(GATE_MS + dur * 0.55, () => { glow.style.background = '#5b6b82'; gachaGlowColor = '#9fb6cc'; g3SetColor('#9fb6cc'); hint.textContent = 'あれ…？ もどった…？'; });
+  at(GATE_MS + dur * 0.72, () => { glow.style.background = color; gachaGlowColor = color; g3SetColor(color); g3Cracks(3); g3Frenzy(); egg.classList.add('frenzy'); hint.textContent = rarity === 'R' ? 'われる…！' : 'すごい色だ…！！'; sfx('alert'); });
   at(GATE_MS + dur, gachaReveal);
 }
 
@@ -4031,7 +4178,7 @@ function gachaReveal() {
   const reveal = document.getElementById('gfx-reveal');
   const flash = document.getElementById('gfx-flash');
   document.getElementById('gfx-gate').classList.add('hidden'); // ゲート中にスキップされた場合も閉じる
-  egg.classList.remove('hidden');
+  g3Burst(); // 3Dの殻が砕け散る
   flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
   egg.classList.add('burst');
   sfx(rarity === 'SSR' ? 'win' : 'rare');
@@ -4062,6 +4209,7 @@ function gachaReveal() {
 }
 
 function closeGachaFx() {
+  g3Stop();
   gachaFxTimers.forEach(clearTimeout); gachaFxTimers = [];
   clearInterval(gachaParticleTimer);
   gachaPending = null;
