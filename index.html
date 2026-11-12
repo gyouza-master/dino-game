@@ -1602,6 +1602,7 @@ const DINOS = [
   { id:'spino',   name:'スピノサウルス',     emoji:'🐊', rarity:'SR',  type:'aqua',  need:20, pow:180 },
   { id:'brachio', name:'ブラキオサウルス',   emoji:'🦕', rarity:'SR',  type:'plant', need:20, pow:190 },
   { id:'mosa',    name:'モササウルス',       emoji:'🐋', rarity:'SR',  type:'aqua',  need:20, pow:200 },
+  { id:'elasmo',  name:'エラスモサウルス',   emoji:'🦕', rarity:'SR',  type:'aqua',  need:20, pow:190 },
   { id:'trex',    name:'ティラノサウルス',   emoji:'🦖', rarity:'SSR', type:'meat',  need:30, pow:400 },
 ];
 // タイプ三すくみ：肉食🥩 → 草食🌿 → 水翔🌊 → 肉食…（→は「強い」方向）
@@ -1623,11 +1624,11 @@ const AREAS = [
     boss:{ name:'炎のカルノ', dino:'carno', hp:1300, atk:18 },
     scenery:{ bg:'linear-gradient(180deg,#2a0f08,#160705 70%,#0e0504)', back:'🌋 🪨 🌋 🪨', front:'🔥 🪨 🔥 🌋' } },
   { name:'嵐の海岸', terrain:'aqua', desc:'荒れ狂う海に巨大な影が泳いでいる…', icon:'🌊',
-    pool:['anky','ptera','carno'], rare:['spino','mosa'],
+    pool:['anky','ptera','carno'], rare:['spino','mosa','elasmo'],
     boss:{ name:'海帝モサ', dino:'mosa', hp:2600, atk:24 },
     scenery:{ bg:'linear-gradient(180deg,#0a1c30,#060f1c 70%,#040a14)', back:'⛈️ 🌊 ⛈️ 🌊', front:'🌊 🪸 🌊 🐚' } },
   { name:'禁断の孤島', terrain:'meat', desc:'ここが最後の地。王者が君を待っている。', icon:'🏝️',
-    pool:['ptera','carno','spino','brachio','mosa'], rare:['trex'],
+    pool:['ptera','carno','spino','brachio','mosa','elasmo'], rare:['trex'],
     boss:{ name:'キング・ティラノ', dino:'trex', hp:5000, atk:32 },
     scenery:{ bg:'linear-gradient(180deg,#1c0f2a,#100618 70%,#0a0410)', back:'🏔️ 🌴 🏔️ 🌴', front:'🦴 🌿 🦴 🌿' } },
 ];
@@ -4886,6 +4887,7 @@ const DINO_DESC = {
   spino:   '背中の帆が目印の水辺のハンター。泳ぎが得意で、魚も恐竜も逃さない。',
   brachio: '見上げるほど長い首で高い梢の葉を食べる。穏やかだが、怒ると大地が揺れる。',
   mosa:    '海の頂点捕食者。巨大なアゴに捕まったら、どんな獲物も逃れられない。',
+  elasmo:  '体長の半分を占める長い首をくねらせ、獲物に静かに忍び寄る海の狩人。開いた大口から逃げ切れた魚はいない。',
   trex:    '恐竜の王。あらゆる時代を通じて最強と呼ばれる伝説の捕食者。その咆哮は島中に轟く。',
 };
 function openDinoDetail(id) {
@@ -4907,7 +4909,7 @@ function closeDinoDetail() { document.getElementById('dino-detail').classList.ad
 const ACHV = [
   { id:'firstRestore', name:'はじめての復元', desc:'恐竜を1体復元する', reward:'🪙 500コイン', give:() => { S.coins += 500; }, chk:() => Object.keys(S.restored).length >= 1 },
   { id:'dex5',   name:'駆け出し研究員', desc:'恐竜を5体復元する', reward:'🎫 チケット×1', give:() => { S.tickets += 1; }, chk:() => Object.keys(S.restored).length >= 5 },
-  { id:'dex13',  name:'恐竜王',         desc:'全13体をコンプリート', reward:'🎫 チケット×3', give:() => { S.tickets += 3; }, chk:() => Object.keys(S.restored).length >= 13 },
+  { id:'dex13',  name:'恐竜王',         desc:'全14体をコンプリート', reward:'🎫 チケット×3', give:() => { S.tickets += 3; }, chk:() => Object.keys(S.restored).length >= DINOS.length },
   { id:'ssr',    name:'伝説との遭遇',   desc:'ティラノサウルスを仲間にする', reward:'🎫 チケット×2', give:() => { S.tickets += 2; }, chk:() => S.restored.trex !== undefined },
   { id:'hunter10', name:'ハンターバスター', desc:'ハンターを10人撃退する', reward:'🎫 チケット×2', give:() => { S.tickets += 2; }, chk:() => S.stats.hunters >= 10 },
   { id:'explore100', name:'ジャングルの住人', desc:'探索を100回おこなう', reward:'🗝️ 鍵×3', give:() => { S.keys += 3; }, chk:() => S.stats.explores >= 100 },
@@ -4975,7 +4977,7 @@ const DEX_MILESTONES = [
   { n: 5,  label: '5体復元', reward: ICONS.key + ' 鍵×2', give: () => { S.keys += 2; } },
   { n: 8,  label: '8体復元', reward: ICONS.ticket + ' チケット×2', give: () => { S.tickets += 2; } },
   { n: 10, label: '10体復元', reward: ICONS.coin + ' 2000コイン', give: () => { S.coins += 2000; } },
-  { n: 13, label: '全13体コンプリート！', reward: ICONS.ticket + ' チケット×5', give: () => { S.tickets += 5; } },
+  { n: 14, label: '全14体コンプリート！', reward: ICONS.ticket + ' チケット×5', give: () => { S.tickets += 5; } },
 ];
 function renderDexMilestones() {
   const box = document.getElementById('dex-milestones');
