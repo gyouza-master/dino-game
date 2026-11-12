@@ -2513,6 +2513,72 @@ function loadModel(slug) {
   }, undefined, () => { GLB_CACHE[slug] = null; });
 }
 
+/* ひっさつ技のフィールド演出（3D空間にタイプ別エフェクト） */
+function vfxMat(color) {
+  return new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95,
+    blending: THREE.AdditiveBlending, depthWrite: false });
+}
+function skillVfx(type) {
+  if (!T3) return;
+  T3.fx = T3.fx || [];
+  const z = T3.camZ - 9;
+  const t0 = T3.t;
+  if (type === 'meat') {
+    // メテオ：火球が落下→着弾で爆発と衝撃リング
+    const ball = new THREE.Mesh(GEO('vfxBall', () => new THREE.SphereGeometry(0.6, 10, 10)), vfxMat(0xff7b00));
+    ball.position.set(1.6, 13, z);
+    const ring = new THREE.Mesh(GEO('vfxRing', () => new THREE.TorusGeometry(1, 0.12, 8, 28)), vfxMat(0xffb300));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.25, z); ring.visible = false;
+    T3.scn.add(ball); T3.scn.add(ring);
+    T3.fx.push({ u() {
+      const k = T3.t - t0;
+      if (k < 0.45) { const q = k / 0.45; ball.position.y = 13 - q * 12.4; ball.position.x = 1.6 * (1 - q); ball.scale.setScalar(1 + q * 0.8); return true; }
+      ring.visible = true;
+      const e = (k - 0.45) / 0.55;
+      if (e >= 1) { T3.scn.remove(ball); T3.scn.remove(ring); return false; }
+      ball.scale.setScalar(1.8 + e * 6); ball.material.opacity = 0.95 * (1 - e);
+      ring.scale.setScalar(1 + e * 9); ring.material.opacity = 0.9 * (1 - e);
+      return true;
+    }});
+  } else if (type === 'plant') {
+    // グランド・クエイク：地面からエナジーの棘がせり上がる
+    const spikes = [];
+    for (let i = 0; i < 7; i++) {
+      const sp = new THREE.Mesh(GEO('cone', () => new THREE.ConeGeometry(1, 1, 5)), vfxMat(0x6aff7a));
+      sp.scale.set(0.5, 0.01, 0.5);
+      sp.position.set((Math.random() - 0.5) * 6, 0, z - 2 + (Math.random() - 0.5) * 5);
+      sp.userData.d = i * 0.06; sp.userData.h = 2.2 + Math.random() * 2;
+      T3.scn.add(sp); spikes.push(sp);
+    }
+    T3.fx.push({ u() {
+      const k = T3.t - t0;
+      if (k >= 1.3) { spikes.forEach(sp => T3.scn.remove(sp)); return false; }
+      spikes.forEach(sp => {
+        const q = Math.max(0, Math.min(1, (k - sp.userData.d) / 0.22));
+        const out = Math.max(0, (k - 1.0) / 0.3);
+        const h = sp.userData.h * q * (1 - out);
+        sp.scale.y = Math.max(0.01, h); sp.position.y = h / 2;
+        sp.material.opacity = 0.95 * (1 - out);
+      });
+      return true;
+    }});
+  } else {
+    // メガ・ウェーブ：青い奔流ビームが敵へ走る
+    const beam = new THREE.Mesh(GEO('vfxBeam', () => { const g = new THREE.CylinderGeometry(1, 1, 1, 10, 1, true); g.rotateX(Math.PI / 2); return g; }), vfxMat(0x4ad8ff));
+    beam.position.set(0, 2, T3.camZ - 5.5);
+    beam.scale.set(0.3, 0.3, 9);
+    T3.scn.add(beam);
+    T3.fx.push({ u() {
+      const k = (T3.t - t0) / 0.75;
+      if (k >= 1) { T3.scn.remove(beam); return false; }
+      const r = 0.3 + Math.sin(Math.min(1, k * 2) * Math.PI) * 0.65;
+      beam.scale.set(r, r, 9);
+      beam.material.opacity = 0.9 * (1 - Math.max(0, k - 0.6) / 0.4);
+      return true;
+    }});
+  }
+}
+
 function makeGodRay() {
   // 木漏れ日の光芒（加算合成の半透明コーン）
   const m = new THREE.Mesh(
@@ -2824,6 +2890,9 @@ function loop3D() {
     }
     pos.needsUpdate = true;
   }
+
+  // ひっさつ技などの一時エフェクトを更新
+  if (T3.fx && T3.fx.length) T3.fx = T3.fx.filter(f => f.u());
 
   // 木漏れ日：ゆっくり明滅しながらカメラに追随
   if (T3.rays) for (const r of T3.rays) {
@@ -3388,6 +3457,7 @@ function skillAttack() {
     const dmg = lu ? Math.round(effUnitPow(lu, battle.opp) * 3.5) : Math.round(effTeamPower(battle.opp.dtype, battle.opp.terrain) * 3);
     chargeTo(memberEl(leader), document.getElementById('b-boss-art'), 0.85); // リーダーが突撃して叩き込む
     battle.hp -= dmg;
+    skillVfx(DINO_MAP[teamIds()[0]].type); // リーダーのタイプで3D演出
     dmgPop(dmg, true);
     flameBurst(document.getElementById('b-boss-art'), 190);
     document.getElementById('b-log').textContent = `🔥 ひっさつ発動！！ ${dmg}の大ダメージ！！`;
