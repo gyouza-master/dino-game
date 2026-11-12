@@ -858,9 +858,9 @@
     animation: finishPop .95s ease-out forwards;
   }
   @keyframes finishPop { 0% { transform: scale(.4); opacity: 0; } 18% { transform: scale(1.25); opacity: 1; } 30% { transform: scale(1); } 78% { opacity: 1; } 100% { transform: scale(1.05); opacity: 0; } }
-  body[data-phase="morning"] #scene3d { filter: sepia(.18) brightness(1.07); }
-  body[data-phase="evening"] #scene3d { filter: sepia(.35) brightness(.93) hue-rotate(-8deg); }
-  body[data-phase="night"] #scene3d { filter: brightness(.6) saturate(.8) hue-rotate(6deg); }
+  
+  
+  
   body[data-phase="morning"] .field-thumb { filter: brightness(1.06) sepia(.12); }
   body[data-phase="evening"] .field-thumb { filter: sepia(.28) brightness(.93); }
   body[data-phase="night"] .field-thumb { filter: brightness(.68) saturate(.85); }
@@ -2042,10 +2042,10 @@ const FIELD_3D = [
     bbTrees:['tree1','tree2','tree3'], bbUnder:['fern1','bush1'],
     models:[{slug:'island_tree_01', count:3, scale:1.1, near:1}, {slug:'fern_02', count:10, scale:1.3}] },
   { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8, mist:1, tex:'swamp', texTint:0x90a090, walls:1, bbTrees:['deadtree1'], bbUnder:['reeds1'],
-    models:[{slug:'dead_tree_trunk', count:6, scale:1.1, near:1}, {slug:'fern_02', count:5, scale:1.1}] },
+    models:[{slug:'dead_tree_trunk', count:6, scale:1.1, near:1}, {slug:'fern_02', count:5, scale:1.1}], rain:1, water:1 },
   { fog:0x2a0f08, ground:0x1a0d0a, ground2:0x2a140c, obj:'rock', leaf:0x4a2a20, leaf2:0x5c3626, leaf3:0x332016, trunk:0x331a12, count:34, props:44, fogFar:55, mote:0xff9a3c, tex:'volcano', texTint:0x9a6a58, bareRock:1, bbTrees:['chartree1'], models:[{slug:'boulder_01', count:7, scale:1.2}] },
   { fog:0x0a1c30, ground:0x0e2238, ground2:0x14304a, obj:'tree', leaf:0x1d5c3a, leaf2:0x2a7d4a, leaf3:0x14402a, trunk:0x4a3826, count:30, props:56, fogFar:60, mote:0xcfe8ff, tex:'coast', texTint:0xb8ae96, bbTrees:['tree2'], bbUnder:['driftwood1'],
-    models:[{slug:'coast_rocks_01', count:4, scale:1}, {slug:'boulder_01', count:3, scale:0.9}] },
+    models:[{slug:'coast_rocks_01', count:4, scale:1}, {slug:'boulder_01', count:3, scale:0.9}], rain:1 },
   { fog:0x160b24, ground:0x170d22, ground2:0x241636, obj:'tree', leaf:0x2a1e44, leaf2:0x3a2a5c, leaf3:0x1e1430, trunk:0x241a30, count:36, props:64, fogFar:50, mote:0xd8b4fe, tex:'island', texTint:0x8f7fa6, bareRock:1, bbTrees:['ribs1','deadtree1'],
     models:[{slug:'dead_tree_trunk', count:4, scale:1.2, near:1}, {slug:'boulder_01', count:4, scale:1.1}] },
 ];
@@ -2096,6 +2096,21 @@ function init3D() {
       composer = new THREE.EffectComposer(renderer);
       composer.addPass(new THREE.RenderPass(scn, cam));
       composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(480, 740), 0.45, 0.55, 0.8));
+      const gradeShader = {
+        uniforms: { tDiffuse: { value: null } },
+        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: `varying vec2 vUv; uniform sampler2D tDiffuse;
+          void main(){
+            vec4 c = texture2D(tDiffuse, vUv);
+            float d = distance(vUv, vec2(0.5));
+            c.rgb *= smoothstep(0.92, 0.32, d) * 0.22 + 0.82;   // ビネット
+            float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+            c.rgb = mix(vec3(l), c.rgb, 1.14);                   // 彩度アップ
+            c.rgb = (c.rgb - 0.5) * 1.05 + 0.5;                  // 弱コントラスト
+            gl_FragColor = c;
+          }`,
+      };
+      composer.addPass(new THREE.ShaderPass(gradeShader));
       composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
     } catch (e) { composer = null; }
     T3 = { renderer, scn, cam, sun, composer, group: null, trees: [], ground: null, boss: null,
@@ -2579,6 +2594,134 @@ function skillVfx(type) {
   }
 }
 
+/* ===== 世界観パーツ：空・山並み・太陽・レンズボケ・雨・水面 ===== */
+function makeSkyDome(cfg) {
+  // 縦グラデーションの空（フォグ色の地平線→暗い天頂）
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const ctx = c.getContext('2d');
+  const fogHex = '#' + cfg.fog.toString(16).padStart(6, '0');
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#05070c');
+  g.addColorStop(0.55, fogHex);
+  g.addColorStop(1, fogHex);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 2, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.encoding = THREE.sRGBEncoding;
+  const dome = new THREE.Mesh(
+    GEO('sky', () => new THREE.SphereGeometry(160, 20, 12)),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false }));
+  dome.renderOrder = -10;
+  return dome;
+}
+function mountainTexture(cfg, lightness) {
+  // ギザギザの稜線シルエットをキャンバスで描く
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
+  const ctx = c.getContext('2d');
+  const base = new THREE.Color(cfg.fog).lerp(new THREE.Color(0xffffff), lightness);
+  ctx.fillStyle = '#' + base.getHexString();
+  ctx.beginPath();
+  ctx.moveTo(0, 256);
+  let y = 150 + Math.random() * 40;
+  for (let x = 0; x <= 1024; x += 32) {
+    y += (Math.random() - 0.5) * 60;
+    y = Math.max(40, Math.min(220, y));
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(1024, 256);
+  ctx.closePath(); ctx.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.encoding = THREE.sRGBEncoding;
+  return tex;
+}
+function makeMountains(cfg) {
+  const group = new THREE.Group();
+  [[0.16, -120, 46], [0.08, -95, 34]].forEach(([li, z, h]) => {
+    const m = new THREE.Mesh(
+      GEO('mtn', () => new THREE.PlaneGeometry(1, 1)),
+      new THREE.MeshBasicMaterial({ map: mountainTexture(cfg, li), transparent: true, fog: false, depthWrite: false }));
+    m.scale.set(340, h, 1);
+    m.position.set(0, h * 0.42, z);
+    m.renderOrder = -9;
+    m.userData.mz = z;
+    group.add(m);
+  });
+  return group;
+}
+function makeSunGlow() {
+  if (!_mistTex) makeMist();
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: _mistTex, color: 0xffe9b0, transparent: true, opacity: 0.55,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  sp.scale.set(55, 55, 1);
+  sp.renderOrder = -8;
+  return sp;
+}
+function makeLensMotes() {
+  // カメラ直前を漂う大きなボケ玉（レンズ感）
+  if (!_mistTex) makeMist();
+  const arr = [];
+  for (let i = 0; i < 4; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: _mistTex, color: 0xfff2cc, transparent: true,
+      opacity: 0.045 + Math.random() * 0.045,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    const sc = 1.6 + Math.random() * 2.4;
+    sp.scale.set(sc, sc, 1);
+    sp.userData = { ph: Math.random() * 10, ox: (Math.random() - 0.5) * 3, oy: 1.2 + Math.random() * 1.6, oz: -(1.5 + Math.random() * 2) };
+    arr.push(sp);
+  }
+  return arr;
+}
+function makeRain() {
+  // 雨：短い線分が落ち続ける
+  const N = 260;
+  const pos = new Float32Array(N * 2 * 3);
+  const seeds = [];
+  for (let i = 0; i < N; i++) {
+    seeds.push({ x: (Math.random() - 0.5) * 30, y: Math.random() * 14, z: -Math.random() * 46, v: 16 + Math.random() * 8 });
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const rain = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+    color: 0xaac8d8, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false }));
+  rain.userData.seeds = seeds;
+  rain.frustumCulled = false;
+  return rain;
+}
+let _waterNormTex = null;
+function makeWater(cfg) {
+  // 水面：さざ波ノーマルをスクロールさせて光らせる
+  if (!_waterNormTex) {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(128, 128);
+    for (let yy = 0; yy < 128; yy++) for (let xx = 0; xx < 128; xx++) {
+      const i = (yy * 128 + xx) * 4;
+      const nx = Math.sin(xx * 0.3 + yy * 0.12) * 0.5 + Math.sin(xx * 0.08 - yy * 0.3) * 0.5;
+      const ny = Math.cos(xx * 0.14 + yy * 0.26) * 0.5 + Math.sin(yy * 0.09 + xx * 0.21) * 0.5;
+      img.data[i] = 128 + nx * 55; img.data[i + 1] = 128 + ny * 55; img.data[i + 2] = 255; img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    _waterNormTex = new THREE.CanvasTexture(c);
+    _waterNormTex.wrapS = _waterNormTex.wrapT = THREE.RepeatWrapping;
+  }
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(cfg.fog).lerp(new THREE.Color(0x224a44), 0.5),
+    roughness: 0.18, metalness: 0.65,
+    normalMap: _waterNormTex, normalScale: new THREE.Vector2(0.5, 0.5),
+    transparent: true, opacity: 0.85 });
+  mat.normalMap.repeat.set(12, 60);
+  const group = new THREE.Group();
+  [-1, 1].forEach(side => {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(26, WORLD_DEPTH * 2.5), mat);
+    w.rotation.x = -Math.PI / 2;
+    w.position.set(side * 21, 0.06, 0);
+    group.add(w);
+  });
+  group.userData.waterMat = mat;
+  return group;
+}
+
 function makeGodRay() {
   // 木漏れ日の光芒（加算合成の半透明コーン）
   const m = new THREE.Mesh(
@@ -2738,6 +2881,18 @@ function build3DWorld(ai) {
       group.add(gt);
     }
   }
+  // 空・山並み・太陽グロー（世界の奥行き）
+  T3.sky = makeSkyDome(cfg); group.add(T3.sky);
+  T3.mtns = makeMountains(cfg); group.add(T3.mtns);
+  T3.sunGlow = makeSunGlow(); group.add(T3.sunGlow);
+  // レンズ前のボケ玉
+  T3.lens = makeLensMotes(); T3.lens.forEach(l => group.add(l));
+  // 雨と水面（湿地・嵐の海岸）
+  T3.rain = null;
+  if (cfg.rain) { T3.rain = makeRain(); group.add(T3.rain); }
+  T3.water = null;
+  if (cfg.water) { T3.water = makeWater(cfg); group.add(T3.water); }
+
   // 本物の3Dスキャンモデル（読み込み済みなら配置、未ならロード開始）
   (cfg.models || []).forEach(mi => {
     const proto = GLB_CACHE[mi.slug];
@@ -2889,6 +3044,38 @@ function loop3D() {
       pos.array[i * 3 + 1] = base[i * 3 + 1] + Math.sin(T3.t * 0.9 + i * 2.3) * 0.35;
     }
     pos.needsUpdate = true;
+  }
+
+  // 空・山・太陽・レンズボケをカメラに追随させる
+  if (T3.sky) T3.sky.position.set(T3.cam.position.x, 0, T3.camZ);
+  if (T3.mtns) T3.mtns.children.forEach(m => { m.position.z = T3.camZ + m.userData.mz; });
+  if (T3.sunGlow) T3.sunGlow.position.set(26, 30, T3.camZ - 130);
+  if (T3.lens) T3.lens.forEach(l => {
+    const u = l.userData;
+    l.position.set(
+      T3.cam.position.x + u.ox + Math.sin(T3.t * 0.12 + u.ph) * 1.6,
+      u.oy + Math.sin(T3.t * 0.2 + u.ph * 2) * 0.5,
+      T3.camZ + u.oz);
+  });
+  // 雨を降らせる
+  if (T3.rain) {
+    const seeds = T3.rain.userData.seeds;
+    const pos = T3.rain.geometry.attributes.position;
+    for (let i = 0; i < seeds.length; i++) {
+      const sd = seeds[i];
+      sd.y -= sd.v * 0.016;
+      if (sd.y < 0) { sd.y = 12 + Math.random() * 3; sd.x = (Math.random() - 0.5) * 30; sd.z = -Math.random() * 46; }
+      const px = sd.x, py = sd.y, pz = T3.camZ + sd.z;
+      pos.array[i * 6] = px; pos.array[i * 6 + 1] = py; pos.array[i * 6 + 2] = pz;
+      pos.array[i * 6 + 3] = px + 0.05; pos.array[i * 6 + 4] = py + 0.42; pos.array[i * 6 + 5] = pz;
+    }
+    pos.needsUpdate = true;
+  }
+  // 水面のさざ波
+  if (T3.water) {
+    const wm = T3.water.userData.waterMat;
+    if (wm.normalMap) { wm.normalMap.offset.x = T3.t * 0.018; wm.normalMap.offset.y = T3.t * 0.011; }
+    T3.water.position.z = T3.camZ - WORLD_DEPTH;
   }
 
   // ひっさつ技などの一時エフェクトを更新
@@ -4346,9 +4533,25 @@ function renderChest() {
   if (lg) lg.textContent = `軽量モード：${S.lowGfx ? 'ON（影・ブルームなし）' : 'OFF'}　タップで切替`;
 }
 
+const PHASE_LIGHT = {
+  morning: { sun: 0xffd9a0, si: 1.0,  exp: 1.02 },
+  day:     { sun: 0xfff2dc, si: 1.1,  exp: 1.05 },
+  evening: { sun: 0xff9550, si: 0.95, exp: 0.98 },
+  night:   { sun: 0x8fa8ff, si: 0.55, exp: 0.88 },
+};
+let _lastPhase = '';
 function updatePhase() {
   const h = new Date().getHours();
-  document.body.dataset.phase = (h >= 5 && h < 10) ? 'morning' : (h >= 10 && h < 16) ? 'day' : (h >= 16 && h < 19) ? 'evening' : 'night';
+  const ph = (h >= 5 && h < 10) ? 'morning' : (h >= 10 && h < 16) ? 'day' : (h >= 16 && h < 19) ? 'evening' : 'night';
+  document.body.dataset.phase = ph;
+  if (ph !== _lastPhase && T3) { // 3D側のライトも時間帯で変える
+    _lastPhase = ph;
+    const L = PHASE_LIGHT[ph];
+    T3.sun.color.setHex(L.sun).convertSRGBToLinear();
+    T3.sun.intensity = L.si;
+    T3.renderer.toneMappingExposure = L.exp;
+    if (T3.sunGlow) T3.sunGlow.material.color.setHex(L.sun);
+  }
 }
 function renderAll() {
   updatePhase();
