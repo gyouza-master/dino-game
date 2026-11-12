@@ -702,6 +702,72 @@
   }
   @keyframes flameBurst { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
 
+
+  /* ===== 島マップ（本家風の探索マップ） ===== */
+  #island-map { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid #2a3850;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 60px rgba(0,0,0,.35); aspect-ratio: 1 / 1.12; }
+  #island-map .mapbg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .map-node { position: absolute; transform: translate(-50%, -50%); text-align: center; cursor: pointer; z-index: 3; }
+  .map-node .dot { width: 44px; height: 24px; margin: 0 auto; border-radius: 50%;
+    background: rgba(8,16,26,.55); border: 2px solid rgba(159,182,204,.75);
+    box-shadow: inset 0 0 10px rgba(0,0,0,.65), 0 2px 6px rgba(0,0,0,.5); }
+  .map-node.current .dot { border-color: #ffd24a; box-shadow: inset 0 0 10px rgba(0,0,0,.65), 0 0 12px rgba(255,210,74,.55); }
+  .map-node .nlabel { margin-top: 3px; font-size: 11px; font-weight: 900; color: #eaf4ff;
+    text-shadow: 0 1px 3px #000, 0 0 8px #000; white-space: nowrap; }
+  .map-node .nprog { font-size: 10px; color: #4ad8ff; font-weight: 900; text-shadow: 0 1px 2px #000; }
+  .map-node.locked { filter: grayscale(1); opacity: .7; }
+  .map-node.locked .nprog { color: #8fa3bd; }
+  .map-target { position: absolute; width: 64px; height: 42px; transform: translate(-50%, -50%);
+    border-radius: 50%; border: 3px solid #ff5a3c; pointer-events: none; z-index: 2;
+    box-shadow: 0 0 18px rgba(255,90,60,.7), inset 0 0 14px rgba(255,90,60,.4);
+    animation: mapPulse 1.1s infinite; }
+  @keyframes mapPulse { 0%, 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } 50% { transform: translate(-50%,-50%) scale(1.2); opacity: .55; } }
+  .map-me { position: absolute; transform: translate(-50%, -90%); font-size: 21px; z-index: 4;
+    filter: drop-shadow(0 2px 4px #000); animation: meBob 1.6s infinite; pointer-events: none; }
+  @keyframes meBob { 0%, 100% { transform: translate(-50%,-90%); } 50% { transform: translate(-50%,-112%); } }
+  .btn-mapgo { display: block; width: 100%; margin-top: 10px; padding: 14px; font-size: 17px; font-weight: 900;
+    color: #fff; letter-spacing: .1em; cursor: pointer;
+    background: linear-gradient(180deg, #ff6a3c, #d42a14 60%, #a81c0c);
+    border: 2px solid #ffb48c; border-radius: 12px;
+    box-shadow: 0 5px 0 #7a1408, 0 10px 22px rgba(0,0,0,.5);
+    text-shadow: 0 2px 3px rgba(0,0,0,.6); }
+  .btn-mapgo:active { transform: translateY(4px); box-shadow: 0 1px 0 #7a1408; }
+  .map-detail { margin-top: 10px; }
+
+  /* ===== 捕獲演出（本家の「[名前]を捕獲した」） ===== */
+  #capture-fx { position: fixed; inset: 0; z-index: 85; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; padding: 20px;
+    background: radial-gradient(ellipse at 50% 42%, rgba(10,24,34,.9), rgba(2,6,10,.96) 75%); }
+  #capture-fx.hidden { display: none; }
+  .cap-burst { position: absolute; inset: -30%; pointer-events: none; opacity: .5;
+    background: repeating-conic-gradient(from 0deg, rgba(74,216,255,.1) 0deg 6deg, transparent 6deg 16deg);
+    -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 62%);
+    mask-image: radial-gradient(circle, #000 0%, transparent 62%);
+    animation: beamsSpin 22s linear infinite; }
+  .cap-art { position: relative; z-index: 1; animation: capPop .5s cubic-bezier(.2,.9,.3,1.2); }
+  .cap-art img, .cap-art .dino-emoji { max-height: 42vh; font-size: 120px;
+    animation: capSpark 1.6s infinite; }
+  @keyframes capPop { from { transform: scale(.2); opacity: 0; } 70% { transform: scale(1.08); } to { transform: scale(1); opacity: 1; } }
+  @keyframes capSpark {
+    0%, 100% { filter: drop-shadow(0 0 14px rgba(74,216,255,.65)) drop-shadow(0 8px 20px rgba(0,0,0,.6)); }
+    46% { filter: drop-shadow(0 0 20px rgba(74,216,255,.9)) drop-shadow(0 8px 20px rgba(0,0,0,.6)) brightness(1.06); }
+    50% { filter: drop-shadow(0 0 30px rgba(190,240,255,1)) drop-shadow(0 8px 20px rgba(0,0,0,.6)) brightness(1.35); }
+    54% { filter: drop-shadow(0 0 20px rgba(74,216,255,.9)) drop-shadow(0 8px 20px rgba(0,0,0,.6)) brightness(1.06); }
+  }
+  .cap-plate { position: relative; z-index: 1; padding: 9px 22px; font-size: 17px; font-weight: 900;
+    color: #eaf8ff; background: linear-gradient(180deg, rgba(14,30,44,.95), rgba(7,16,24,.95));
+    border: 1px solid #2d9fd4; border-radius: 8px;
+    box-shadow: 0 0 16px rgba(45,159,212,.35), 0 6px 16px rgba(0,0,0,.5);
+    text-shadow: 0 2px 4px #000; animation: bang .4s; }
+  .cap-plate b { color: #4ad8ff; }
+  .cap-sub { position: relative; z-index: 1; font-size: 13px; font-weight: 900; color: #ffd24a; text-align: center; text-shadow: 0 1px 3px #000; }
+  .btn-cap { position: relative; z-index: 1; margin-top: 4px; padding: 11px 46px; font-size: 15px; font-weight: 900;
+    color: #fff; cursor: pointer; letter-spacing: .08em;
+    background: linear-gradient(180deg, #37b6e8, #1d7fb4 65%, #156290);
+    border: 2px solid #8fe0ff; border-radius: 10px;
+    box-shadow: 0 4px 0 #0d4668, 0 8px 18px rgba(0,0,0,.45); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .btn-cap:active { transform: translateY(3px); box-shadow: 0 1px 0 #0d4668; }
+
   /* ===== ガチャ演出（フルスクリーン） ===== */
   #gacha-fx {
     position: fixed; inset: 0; z-index: 90; overflow: hidden;
@@ -1407,6 +1473,15 @@
       <div class="cutin-skill" id="cutin-skill"></div>
       <div class="cutin-name" id="cutin-name"></div>
     </div>
+  </div>
+
+  <!-- ===== 捕獲演出 ===== -->
+  <div id="capture-fx" class="hidden">
+    <div class="cap-burst"></div>
+    <div class="cap-art" id="cap-art"></div>
+    <div class="cap-plate"><b id="cap-name"></b> を捕獲した！</div>
+    <div class="cap-sub" id="cap-sub"></div>
+    <button class="btn-cap" onclick="closeCaptureFx()">閉じる</button>
   </div>
 
   <!-- ===== ガチャ演出 ===== -->
@@ -4041,13 +4116,25 @@ function restore(id) {
     '<span class="c-rare">ピシ…ピシピシ…！</span>', '復元中…');
   sfx('dna');
   setTimeout(() => {
-    sfx('restore');
     toast(`🧪 <span class="c-rare">復元成功！【${RARITY_NAME[d.rarity]}】${d.name} が仲間になった！</span>${isAlt ? '<br>✨ <span class="c-rare">色違い個体だった！</span>' : ''}`);
-    showStage(dinoArtHTML(id, isAlt),
-      `<span class="c-rare">復元成功！<br>${d.name} が仲間になった！</span>${isAlt ? '<br>✨ 色違い個体！' : ''}`,
-      `パワー ${dinoPower(id)}`, true);
+    openCaptureFx(id, isAlt);
     renderAll();
   }, 950);
+}
+
+// 本家風「[名前]を捕獲した」フルスクリーン演出
+function openCaptureFx(id, isAlt) {
+  const d = DINO_MAP[id];
+  document.getElementById('cap-art').innerHTML = dinoArtHTML(id, isAlt);
+  document.getElementById('cap-name').textContent = `[${d.name}]`;
+  document.getElementById('cap-sub').innerHTML =
+    `【${RARITY_NAME[d.rarity]}】 パワー ${dinoPower(id)}${isAlt ? '<br>✨ 色違い個体！' : ''}`;
+  document.getElementById('capture-fx').classList.remove('hidden');
+  sfx('restore');
+}
+function closeCaptureFx() {
+  document.getElementById('capture-fx').classList.add('hidden');
+  renderAll();
 }
 
 /* ========== 宝箱 ========== */
@@ -4957,11 +5044,117 @@ function selectArea(i) {
   const a = AREAS[i];
   showStage(`<span class="stage-thumb">${fieldArt(i)}</span>`, `<span class="c-sys">${a.name}にやってきた</span>`, a.desc);
 }
+const MAP_POS = [ // 島マップ上のフィールド位置（%）
+  { x: 32, y: 68 }, { x: 56, y: 50 }, { x: 50, y: 17 }, { x: 20, y: 40 }, { x: 79, y: 71 },
+];
+let mapSel = null;
+let _mapBG = null;
+function islandMapBg() { // 衛星写真風の島マップを描画（images/island-map.jpg があればそちらを使用）
+  if (_mapBG) return _mapBG;
+  const W = 640, H = 740;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const og = x.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, H * 0.78);
+  og.addColorStop(0, '#13405f'); og.addColorStop(0.55, '#0c2c48'); og.addColorStop(1, '#051322');
+  x.fillStyle = og; x.fillRect(0, 0, W, H);
+  x.strokeStyle = 'rgba(150,200,235,0.045)';
+  for (let i = 0; i < 12; i++) { x.lineWidth = 1 + Math.random() * 2; x.beginPath(); x.ellipse(W / 2, H / 2, 150 + i * 30, 185 + i * 33, 0, 0, 7); x.stroke(); }
+  // 島の輪郭（ギザギザの海岸線）
+  const cx = W * 0.5, cy = H * 0.46, rx = W * 0.43, ry = H * 0.4;
+  const blob = () => {
+    x.beginPath();
+    for (let a = 0; a <= Math.PI * 2 + 0.01; a += Math.PI / 42) {
+      const w = 1 + Math.sin(a * 3 + 1.2) * 0.1 + Math.sin(a * 7 + 0.4) * 0.05 + Math.sin(a * 13 + 2.2) * 0.03;
+      const px = cx + Math.cos(a) * rx * w, py = cy + Math.sin(a) * ry * w;
+      a === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+    }
+    x.closePath();
+  };
+  blob(); x.fillStyle = 'rgba(120,200,235,.22)'; x.lineWidth = 26; x.strokeStyle = 'rgba(120,200,235,.2)'; x.stroke(); // 浅瀬
+  blob(); x.fillStyle = '#b8a97e'; x.fill();                   // 砂浜
+  x.save(); blob(); x.clip();
+  const ig = x.createLinearGradient(0, 0, 0, H);
+  ig.addColorStop(0, '#375f33'); ig.addColorStop(1, '#2a5230');
+  x.fillStyle = ig;
+  x.beginPath(); x.ellipse(cx, cy, rx * 0.94, ry * 0.94, 0, 0, 7); x.fill(); // 内陸の緑
+  // フィールドごとの地形スプラット
+  const SPLAT = ['#2f6b33', '#50635a', '#5c2a1c', '#c2b183', '#4a3566'];
+  MAP_POS.forEach((p, i) => {
+    const px = p.x / 100 * W, py = p.y / 100 * H;
+    for (let k = 0; k < 14; k++) {
+      const gg = x.createRadialGradient(px, py, 2, px + (Math.random() - 0.5) * 120, py + (Math.random() - 0.5) * 100, 34 + Math.random() * 40);
+      gg.addColorStop(0, SPLAT[i] + 'cc'); gg.addColorStop(1, SPLAT[i] + '00');
+      x.fillStyle = gg;
+      x.beginPath(); x.arc(px + (Math.random() - 0.5) * 120, py + (Math.random() - 0.5) * 100, 60, 0, 7); x.fill();
+    }
+  });
+  // 火山の火口
+  const vx = MAP_POS[2].x / 100 * W, vy = MAP_POS[2].y / 100 * H;
+  x.fillStyle = '#331410'; x.beginPath(); x.ellipse(vx, vy - 8, 26, 15, 0, 0, 7); x.fill();
+  x.fillStyle = '#ff5a24'; x.beginPath(); x.ellipse(vx, vy - 8, 10, 6, 0, 0, 7); x.fill();
+  // 山脈の陰影
+  x.strokeStyle = 'rgba(10,22,14,.35)'; x.lineWidth = 3;
+  for (let i = 0; i < 46; i++) {
+    const sx = cx + (Math.random() - 0.5) * rx * 1.5, sy = cy + (Math.random() - 0.5) * ry * 1.5;
+    x.beginPath(); x.moveTo(sx, sy); x.lineTo(sx + 8 + Math.random() * 14, sy - 6 - Math.random() * 8); x.lineTo(sx + 20 + Math.random() * 18, sy); x.stroke();
+  }
+  x.restore();
+  // 雲
+  for (let i = 0; i < 7; i++) {
+    const gx = Math.random() * W, gy = Math.random() * H;
+    const cg = x.createRadialGradient(gx, gy, 4, gx, gy, 46 + Math.random() * 50);
+    cg.addColorStop(0, 'rgba(235,242,250,.16)'); cg.addColorStop(1, 'rgba(235,242,250,0)');
+    x.fillStyle = cg; x.fillRect(0, 0, W, H);
+  }
+  // ビネット
+  const vg = x.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.72);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.4)');
+  x.fillStyle = vg; x.fillRect(0, 0, W, H);
+  _mapBG = c.toDataURL('image/jpeg', 0.85);
+  return _mapBG;
+}
+function mapPick(i) {
+  if (i > 0 && !S.cleared[i - 1]) { sfx('step'); return; }
+  mapSel = i;
+  sfx('step');
+  renderField();
+}
 function renderField() {
   const list = document.getElementById('field-list');
-  list.innerHTML = '';
+  if (mapSel === null || (mapSel > 0 && !S.cleared[mapSel - 1])) mapSel = S.areaIdx;
 
-  // アリーナ（CPUライバルとのランク戦）
+  // ===== 島マップ =====
+  let nodes = '';
+  AREAS.forEach((a, i) => {
+    const locked = i > 0 && !S.cleared[i - 1];
+    const p = MAP_POS[i];
+    nodes += `<div class="map-node${locked ? ' locked' : ''}${i === S.areaIdx ? ' current' : ''}" style="left:${p.x}%;top:${p.y}%" onclick="mapPick(${i})">` +
+      `<div class="dot"></div>` +
+      `<div class="nlabel">${locked ? '？？？' : a.name}</div>` +
+      `<div class="nprog">${locked ? '🔒' : '探索率 ' + S.progress[i] + '%' + (S.cleared[i] ? ' ✅' : '')}</div></div>`;
+  });
+  const sp = MAP_POS[mapSel], cp = MAP_POS[S.areaIdx];
+  const sel = AREAS[mapSel];
+  const poolHTML = sel.pool.concat(sel.rare).map(id => {
+    const known = S.restored[id] !== undefined;
+    return `<span class="pool-art${known ? '' : ' silhouette'}" title="${known ? DINO_MAP[id].name : '？？？'}">${dinoArtHTML(id)}</span>`;
+  }).join('');
+  list.innerHTML =
+    `<div id="island-map">` +
+    `<img class="mapbg" src="images/island-map.jpg" onerror="this.onerror=null;this.src=islandMapBg()">` +
+    `<div class="map-target" style="left:${sp.x}%;top:${sp.y}%"></div>` +
+    `<div class="map-me" style="left:${cp.x}%;top:${cp.y}%">🚙</div>` +
+    nodes +
+    `</div>` +
+    `<button class="btn-mapgo" onclick="selectArea(${mapSel})">🦖 ${sel.name} を探索する</button>` +
+    `<div class="panel map-detail">` +
+    `<div class="small" style="margin-bottom:4px">${sel.desc}</div>` +
+    `<div class="field-pool-label">出現DNA</div>` +
+    `<div class="field-pool">${poolHTML}</div>` +
+    `<div class="terrain-note">地形効果：${TYPE_INFO[sel.terrain].icon}${TYPE_INFO[sel.terrain].name}タイプの力が増す（×1.3）</div>` +
+    `</div>`;
+
+  // ===== アリーナ（CPUライバルとのランク戦） =====
   const arena = document.createElement('div');
   arena.className = 'field-card arena-card';
   const opp = arenaOpponent();
@@ -4984,47 +5177,6 @@ function renderField() {
   abtn.onclick = openArenaBattle;
   arena.appendChild(abtn);
   list.appendChild(arena);
-
-  AREAS.forEach((a, i) => {
-    const locked = i > 0 && !S.cleared[i - 1];
-    const card = document.createElement('div');
-    card.className = 'field-card' + (locked ? ' locked' : '') + (i === S.areaIdx ? ' current' : '');
-
-    if (locked) {
-      card.innerHTML =
-        `<div class="field-head"><span class="field-icon" style="color:#8fa3bd">${ICONS.lock}</span>` +
-        `<div><div class="field-name">？？？</div>` +
-        `<div class="field-desc">「${AREAS[i - 1].name}」のボスを倒すと解放</div></div></div>`;
-      list.appendChild(card);
-      return;
-    }
-
-    const poolHTML = a.pool.map(id => {
-      const known = S.restored[id] !== undefined;
-      return `<span class="pool-art${known ? '' : ' silhouette'}" title="${known ? DINO_MAP[id].name : '？？？'}">${dinoArtHTML(id)}</span>`;
-    }).join('');
-    const rareHTML = a.rare.map(id => {
-      const known = S.restored[id] !== undefined;
-      return `<span class="pool-art${known ? '' : ' silhouette'}">${dinoArtHTML(id)}</span>`;
-    }).join('');
-
-    card.innerHTML =
-      `<div class="field-thumb">${fieldArt(i)}</div>` +
-      `<div class="field-head"><div><div class="field-name">${a.name} ${S.cleared[i] ? `<span style="color:#35e05a">${ICONS.check}</span>` : ''}</div>` +
-      `<div class="field-desc">${a.desc}</div></div></div>` +
-      `<div class="field-prog"><div class="bar-outer"><div class="bar-inner bar-field" style="width:${S.progress[i]}%"></div></div>` +
-      `<span class="pct">探索率 ${S.progress[i]}%</span></div>` +
-      `<div class="field-pool-label">出現DNA</div>` +
-      `<div class="field-pool">${poolHTML}<span class="pool-rare" style="color:#ffd24a">${ICONS.bolt}</span>${rareHTML}</div>` +
-      `<div class="terrain-note">地形効果：${TYPE_INFO[a.terrain].icon}${TYPE_INFO[a.terrain].name}タイプの力が増す（×1.3）</div>`;
-
-    const btn = document.createElement('button');
-    btn.className = 'btn ' + (i === S.areaIdx ? 'btn-gold' : 'btn-sub');
-    btn.textContent = i === S.areaIdx ? '▶ いまここ！探索に戻る' : 'ここを探索する ▶';
-    btn.onclick = () => selectArea(i);
-    card.appendChild(btn);
-    list.appendChild(card);
-  });
 }
 
 /* ========== 描画 ========== */
