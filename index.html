@@ -494,6 +494,72 @@
   @keyframes pulse-cyan { from { box-shadow: 0 0 3px rgba(0,217,255,.5); } to { box-shadow: 0 0 10px rgba(0,217,255,.9); } }
   .team-mark { position: absolute; top: 4px; right: 4px; font-size: 11px; z-index: 1; }
 
+
+  /* ===== 図鑑カード：本家風（レアリティ背景・斜め帯・パワー帯） ===== */
+  .dex-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .dino-card {
+    aspect-ratio: 1 / 1.22; padding: 0; overflow: hidden; border-radius: 6px;
+    border-width: 1px; position: relative;
+  }
+  .dino-card.r-N  { background: linear-gradient(165deg, #aeb6bf, #5f6973 55%, #343b44); }
+  .dino-card.r-R  { background: linear-gradient(165deg, #6cc0ff, #1d5f9e 55%, #0b2c4c); }
+  .dino-card.r-SR {
+    background:
+      repeating-conic-gradient(from 0deg at 50% 40%, rgba(255,255,255,.3) 0deg 5deg, rgba(255,255,255,0) 5deg 16deg),
+      linear-gradient(165deg, #ffe08a, #e0a526 55%, #7e5200);
+  }
+  .dino-card.r-SSR {
+    background:
+      repeating-conic-gradient(from 0deg at 50% 40%, rgba(255,255,255,.32) 0deg 5deg, rgba(255,255,255,0) 5deg 14deg),
+      linear-gradient(165deg, #ff9a6a, #d42a1e 55%, #5e0a0a);
+  }
+  .dino-card.locked-card {
+    background: linear-gradient(165deg, #1a212b, #0d1218 70%);
+  }
+  .dino-card .dino-art {
+    position: absolute; inset: 0 0 17px 0; height: auto;
+    display: flex; align-items: flex-end; justify-content: center;
+    background: none; border-radius: 0;
+  }
+  .dino-card .dino-art img { max-height: 92%; max-width: 94%; filter: drop-shadow(0 3px 5px rgba(0,0,0,.45)); }
+  .dino-card .dino-art .dino-emoji { font-size: 38px; margin-bottom: 8px; }
+  /* 未入手はシルエット（上のdrop-shadowに上書きされないよう再宣言） */
+  .dino-card.silhouette .dino-art img,
+  .dino-card.silhouette .dino-art .dino-emoji { filter: brightness(0) opacity(.8) drop-shadow(0 0 5px rgba(0,217,255,.3)); }
+  .dex-ribbon {
+    position: absolute; top: 0; left: 0; z-index: 2;
+    width: 34px; height: 34px; overflow: hidden; pointer-events: none;
+  }
+  .dex-ribbon span {
+    position: absolute; top: 4px; left: -13px; transform: rotate(-45deg);
+    width: 52px; text-align: center;
+    font-size: 9px; font-weight: 900; color: #fff;
+    text-shadow: 0 1px 1px rgba(0,0,0,.6);
+    background: rgba(20,26,34,.9); padding: 1px 0;
+  }
+  .r-R .dex-ribbon span { background: linear-gradient(180deg, #00a8e8, #005e94); }
+  .r-SR .dex-ribbon span { background: linear-gradient(180deg, #ffb300, #9a6a00); color: #2a1c00; text-shadow: none; }
+  .r-SSR .dex-ribbon span { background: linear-gradient(180deg, #ff5a3c, #8a0a00); }
+  .dex-pow {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    height: 17px; line-height: 17px;
+    background: rgba(4, 8, 14, .85);
+    font-size: 10px; font-weight: 900; text-align: center; color: #ffe9b0;
+    white-space: nowrap; overflow: hidden;
+  }
+  .dex-pow.analyzing { color: #4ad8ff; }
+  .dex-pow .mini-bar { position: absolute; left: 4px; right: 4px; bottom: 1px; margin: 0; height: 2px; border: none; }
+  .dex-restore-over {
+    position: absolute; inset: 0; z-index: 3;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 20, 30, .55);
+    font-size: 11px; font-weight: 900; color: #a8efff;
+    text-shadow: 0 0 8px rgba(0,217,255,.9);
+    animation: pulse-cyan 1s infinite alternate;
+  }
+  .dino-card .team-mark { top: 2px; right: 3px; font-size: 12px; filter: drop-shadow(0 1px 2px #000); }
+  #dex-controls { display: flex; gap: 6px; margin-bottom: 8px; }
+
   /* ===== 宝箱 ===== */
   .chest-stage { text-align: center; padding: 10px 0; }
   .chest-emoji { font-size: 72px; display: inline-block; filter: drop-shadow(0 0 14px rgba(255,179,0,.45)); }
@@ -1213,6 +1279,10 @@
         <h2>恐竜図鑑 <span class="small">（<span id="dex-count">0</span>/<span id="dex-total">0</span>体 復元済み）</span></h2>
         <div class="small" style="margin-bottom:8px">DNA解析率100%で恐竜を復元できる。チームタブで編成した5体がバトルチーム（⭐）。復元後に拾ったDNAは自動でパワーに変わる！</div>
         <div id="dex-milestones" style="margin-bottom:10px"></div>
+        <div id="dex-controls">
+          <button class="btn-mini" id="dex-filter-btn" onclick="cycleDexFilter()">表示：すべて</button>
+          <button class="btn-mini" id="dex-sort-btn" onclick="cycleDexSort()">順番：ずかん</button>
+        </div>
         <div class="dex-grid" id="dex-grid"></div>
       </div>
     </section>
@@ -4487,34 +4557,49 @@ function renderExplore() {
   updateExploreBtn();
 }
 
+let dexFilter = 0; // 0=すべて 1=復元済み 2=未復元
+let dexSort = 0;   // 0=ずかん順 1=パワー順 2=レア順
+const RARITY_ORDER = { SSR: 3, SR: 2, R: 1, N: 0 };
+function cycleDexFilter() { dexFilter = (dexFilter + 1) % 3; renderDex(); }
+function cycleDexSort() { dexSort = (dexSort + 1) % 3; renderDex(); }
 function renderDex() {
   renderDexMilestones();
   document.getElementById('dex-count').textContent = Object.keys(S.restored).length;
   document.getElementById('dex-total').textContent = DINOS.length;
+  const fbtn = document.getElementById('dex-filter-btn');
+  const sbtn = document.getElementById('dex-sort-btn');
+  if (fbtn) fbtn.textContent = '表示：' + ['すべて', '復元済み', '未復元'][dexFilter];
+  if (sbtn) sbtn.textContent = '順番：' + ['ずかん', 'パワー', 'レア'][dexSort];
+
+  let list = DINOS.slice();
+  if (dexFilter === 1) list = list.filter(d => S.restored[d.id] !== undefined);
+  if (dexFilter === 2) list = list.filter(d => S.restored[d.id] === undefined);
+  if (dexSort === 1) list.sort((a, b) => dinoPower(b.id) - dinoPower(a.id));
+  if (dexSort === 2) list.sort((a, b) => RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity] || dinoPower(b.id) - dinoPower(a.id));
+
   const grid = document.getElementById('dex-grid');
   grid.innerHTML = '';
   const team = teamIds();
-  DINOS.forEach(d => {
+  list.forEach(d => {
     const owned = S.restored[d.id] !== undefined;
     const have = S.dna[d.id] || 0;
     const card = document.createElement('div');
-    card.className = `dino-card r-${d.rarity}` + (owned ? '' : ' silhouette');
-    let html = `<span class="rarity-tag rt-${d.rarity}">${d.rarity}</span>`;
+    card.className = `dino-card r-${d.rarity}` + (owned ? '' : ' silhouette locked-card');
+    let html = `<span class="dex-ribbon"><span>${d.rarity}</span></span>`;
     if (team.includes(d.id)) html += `<span class="team-mark">⭐</span>`;
     html += `<div class="dino-art">${dinoIconHTML(d.id)}</div>`;
-    html += `<div class="dino-name">${owned ? d.name : '？？？'}</div>`;
-    html += `<div class="dino-type">${TYPE_INFO[d.type].icon} ${TYPE_INFO[d.type].name}</div>`;
     if (owned) {
-      html += `<div class="dino-pow">${ICONS.bolt} ${dinoPower(d.id)}</div>`;
-      card.onclick = () => openDinoDetail(d.id); // タップで詳細ページ
-      card.style.cursor = 'pointer';
+      html += `<div class="dex-pow">⚡ ${dinoPower(d.id)}</div>`;
+      card.onclick = () => openDinoDetail(d.id);
+    } else if (have >= 100) {
+      html += `<div class="dex-restore-over">🧪 復元できる！</div>`;
+      html += `<div class="dex-pow analyzing">🧬 100%</div>`;
+      card.onclick = () => { sfx('dna'); openDnaLab(d.id); };
     } else {
-      html += `<div class="dna-mini">🧬 解析 ${have}%</div>`;
-      html += `<div class="mini-bar"><div style="width:${have}%"></div></div>`;
-      if (have >= 100) html += `<button class="btn-restore" onclick="event.stopPropagation(); restore('${d.id}')">復元する！</button>`;
-      card.onclick = () => { sfx('dna'); openDnaLab(d.id); }; // タップでDNA解析ラボへ
-      card.style.cursor = 'pointer';
+      html += `<div class="dex-pow analyzing">🧬 ${have}%<div class="mini-bar"><div style="width:${have}%"></div></div></div>`;
+      card.onclick = () => { sfx('dna'); openDnaLab(d.id); };
     }
+    card.style.cursor = 'pointer';
     card.innerHTML = html;
     grid.appendChild(card);
   });
