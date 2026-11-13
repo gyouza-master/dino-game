@@ -3179,15 +3179,42 @@ function makeGrassChunk(cfg) {
   m.frustumCulled = false;
   return m;
 }
+const _wingTex = {};
+function wingTex(hex) { // 羽の形＋黒縁＋白斑を描いた蝶の羽テクスチャ
+  if (_wingTex[hex]) return _wingTex[hex];
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const col = '#' + hex.toString(16).padStart(6, '0');
+  x.fillStyle = col;
+  x.beginPath(); x.ellipse(38, 22, 23, 16, -0.55, 0, 7); x.fill(); // 前翅
+  x.beginPath(); x.ellipse(30, 45, 16, 13, 0.35, 0, 7); x.fill();  // 後翅
+  x.globalCompositeOperation = 'source-atop';
+  x.strokeStyle = 'rgba(22,14,8,.95)'; x.lineWidth = 6;            // 黒い縁取り
+  x.beginPath(); x.ellipse(38, 22, 23, 16, -0.55, 0, 7); x.stroke();
+  x.beginPath(); x.ellipse(30, 45, 16, 13, 0.35, 0, 7); x.stroke();
+  x.strokeStyle = 'rgba(22,14,8,.5)'; x.lineWidth = 1.6;           // 翅脈
+  x.beginPath(); x.moveTo(8, 32); x.lineTo(50, 12); x.moveTo(8, 32); x.lineTo(58, 26); x.moveTo(8, 32); x.lineTo(42, 52); x.stroke();
+  x.fillStyle = 'rgba(255,255,255,.9)';                            // 白斑
+  x.beginPath(); x.arc(50, 15, 3, 0, 7); x.fill();
+  x.beginPath(); x.arc(55, 24, 2.2, 0, 7); x.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  _wingTex[hex] = t;
+  return t;
+}
 function makeButterfly(camZ) {
-  // 羽ばたく蝶（2枚のヒンジ付き羽）
+  // 羽ばたく蝶（羽の形をしたテクスチャ付き・左右対称）
   const g = new THREE.Group();
-  const col = pick([0x7fd4ff, 0xffb347, 0xff8ad8, 0xc3ff8a]);
-  const wmat = new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide });
-  wmat.color.convertSRGBToLinear();
-  const w1 = new THREE.Mesh(GEO('wingR', () => { const p = new THREE.PlaneGeometry(0.15, 0.1); p.translate(0.075, 0, 0); return p; }), wmat);
-  const w2 = new THREE.Mesh(GEO('wingL', () => { const p = new THREE.PlaneGeometry(0.15, 0.1); p.translate(-0.075, 0, 0); return p; }), wmat);
-  g.add(w1, w2);
+  const col = pick([0x4aa8e8, 0xf2ead8, 0xff9a3c, 0xffd24a]); // モルフォ青・白・オレンジ・黄
+  const wmat = new THREE.MeshBasicMaterial({ map: wingTex(col), transparent: true, alphaTest: 0.3, side: THREE.DoubleSide });
+  const wingGeo = GEO('wingR', () => { const p = new THREE.PlaneGeometry(0.13, 0.13); p.translate(0.065, 0, 0); return p; });
+  const w1 = new THREE.Mesh(wingGeo, wmat);
+  const w2 = new THREE.Mesh(wingGeo, wmat);
+  w2.scale.x = -1; // 左羽はミラー
+  const body = new THREE.Mesh(
+    GEO('bbody', () => new THREE.PlaneGeometry(0.02, 0.1)),
+    new THREE.MeshBasicMaterial({ color: 0x241a10, side: THREE.DoubleSide }));
+  g.add(w1, w2, body);
   g.position.set((Math.random() - 0.5) * 5, 1 + Math.random(), camZ - 6 - Math.random() * 18);
   g.userData = { w1, w2, ph: Math.random() * 10, by: g.position.y };
   return g;
