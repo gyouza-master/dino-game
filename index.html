@@ -772,6 +772,56 @@
   .btn-mapgo:active { transform: translateY(4px); box-shadow: 0 1px 0 #7a1408; }
   .map-detail { margin-top: 10px; }
 
+
+  /* ===== 島マップUI磨き（場所ピン・雲・ルート・HUD） ===== */
+  .map-zoom { position: absolute; inset: 0; transition: transform .8s cubic-bezier(.3,.7,.25,1); will-change: transform; }
+  .map-clouds { position: absolute; inset: -20%; z-index: 2; pointer-events: none; opacity: .55; filter: blur(7px);
+    background:
+      radial-gradient(ellipse 170px 90px at 20% 28%, rgba(255,255,255,.15), transparent 70%),
+      radial-gradient(ellipse 230px 120px at 72% 58%, rgba(255,255,255,.1), transparent 70%),
+      radial-gradient(ellipse 150px 80px at 42% 86%, rgba(255,255,255,.13), transparent 70%);
+    animation: cloudsDrift 70s linear infinite alternate; }
+  @keyframes cloudsDrift { from { transform: translate(-4%, -2%); } to { transform: translate(4%, 3%); } }
+  .map-route { position: absolute; inset: 0; z-index: 2; pointer-events: none; width: 100%; height: 100%; }
+  .map-route path { stroke: #ffd24a; stroke-width: .7; stroke-dasharray: 2 2; fill: none; opacity: .9;
+    animation: routeDash 1s linear infinite; }
+  @keyframes routeDash { to { stroke-dashoffset: -4; } }
+  .map-pin { position: absolute; transform: translate(-50%, -100%); text-align: center; cursor: pointer; z-index: 3;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,.65)); }
+  .map-pin .ring { position: relative; width: 46px; height: 46px; margin: 0 auto; border-radius: 50%; overflow: hidden;
+    border: 2px solid #9fc4d8; box-shadow: 0 0 0 2px rgba(8,16,26,.8), inset 0 0 10px rgba(0,0,0,.55); background: #0a141e; }
+  .map-pin .ring img, .map-pin .ring svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .map-pin .plock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+  .map-pin .tip { width: 0; height: 0; margin: -1px auto 0;
+    border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 10px solid #9fc4d8; }
+  .map-pin.current .ring { border-color: #ffd24a; box-shadow: 0 0 0 2px rgba(8,16,26,.8), 0 0 12px rgba(255,210,74,.6), inset 0 0 10px rgba(0,0,0,.55); }
+  .map-pin.current .tip { border-top-color: #ffd24a; }
+  .map-pin.locked .ring { filter: grayscale(1) brightness(.5); border-color: #5a6a78; }
+  .map-pin.locked .tip { border-top-color: #5a6a78; }
+  .map-pin .plabelwrap { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; }
+  .map-pin .plabel { font-size: 10.5px; font-weight: 900; color: #fff; text-shadow: 0 1px 3px #000, 0 0 7px #000; white-space: nowrap; }
+  .map-pin .pprog { font-size: 9.5px; font-weight: 900; color: #4ad8ff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  .map-pin .pboss { position: absolute; top: -9px; right: calc(50% - 32px); font-size: 14px; z-index: 2;
+    filter: drop-shadow(0 1px 2px #000); animation: pulse-cyan 0.8s infinite alternate; }
+  .map-pin .pclear { position: absolute; top: -8px; left: calc(50% - 32px); font-size: 12px; z-index: 2; }
+  .map-grid { position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background:
+      linear-gradient(rgba(140,200,235,.06) 1px, transparent 1px) 0 0 / 25% 25%,
+      linear-gradient(90deg, rgba(140,200,235,.06) 1px, transparent 1px) 0 0 / 25% 25%;
+    box-shadow: inset 0 0 0 1px rgba(120,190,230,.3), inset 0 0 46px rgba(0,8,18,.55); }
+  .mapc { position: absolute; width: 14px; height: 14px; border: 2px solid rgba(150,210,240,.7); z-index: 4; pointer-events: none; }
+  .mapc.tl { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+  .mapc.tr { top: 5px; right: 5px; border-left: none; border-bottom: none; }
+  .mapc.bl { bottom: 5px; left: 5px; border-right: none; border-top: none; }
+  .mapc.br { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+  .map-hud { position: absolute; z-index: 4; pointer-events: none; font-size: 9px; letter-spacing: .18em;
+    color: rgba(165,215,245,.85); font-weight: 900; text-shadow: 0 1px 2px #000; }
+  .map-hud.tl { top: 8px; left: 24px; }
+  .map-hud.tr { top: 8px; right: 24px; }
+  .map-hud.br { bottom: 8px; right: 24px; }
+  @keyframes hudBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+  .map-hud .liveDot { color: #ff5a3c; animation: hudBlink 1.4s infinite; }
+
   /* ===== 捕獲演出（本家の「[名前]を捕獲した」） ===== */
   #capture-fx { position: fixed; inset: 0; z-index: 85; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 12px; padding: 20px;
@@ -782,10 +832,18 @@
     -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 62%);
     mask-image: radial-gradient(circle, #000 0%, transparent 62%);
     animation: beamsSpin 22s linear infinite; }
-  .cap-art { position: relative; z-index: 1; animation: capPop .5s cubic-bezier(.2,.9,.3,1.2); }
+  .cap-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
+  .cap-flash.on { animation: gfxFlash .5s ease-out; }
+  #cap-bolts { position: absolute; inset: 0; z-index: 2; pointer-events: none; width: 100%; height: 100%; }
+  .cap-art { position: relative; z-index: 1; animation: capSlam .45s cubic-bezier(.2,.9,.3,1.1); }
   .cap-art img, .cap-art .dino-emoji { max-height: 42vh; font-size: 120px;
     animation: capSpark 1.6s infinite; }
-  @keyframes capPop { from { transform: scale(.2); opacity: 0; } 70% { transform: scale(1.08); } to { transform: scale(1); opacity: 1; } }
+  @keyframes capSlam { /* どアップから叩きつけるように着地 */
+    0% { transform: scale(2.6) translateY(-14px); opacity: 0; filter: blur(5px); }
+    45% { opacity: 1; filter: blur(0); }
+    60% { transform: scale(.94) translateY(2px); }
+    78% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; } }
   @keyframes capSpark {
     0%, 100% { filter: drop-shadow(0 0 14px rgba(74,216,255,.65)) drop-shadow(0 8px 20px rgba(0,0,0,.6)); }
     46% { filter: drop-shadow(0 0 20px rgba(74,216,255,.9)) drop-shadow(0 8px 20px rgba(0,0,0,.6)) brightness(1.06); }
@@ -796,7 +854,16 @@
     color: #eaf8ff; background: linear-gradient(180deg, rgba(14,30,44,.95), rgba(7,16,24,.95));
     border: 1px solid #2d9fd4; border-radius: 8px;
     box-shadow: 0 0 16px rgba(45,159,212,.35), 0 6px 16px rgba(0,0,0,.5);
-    text-shadow: 0 2px 4px #000; animation: bang .4s; }
+    text-shadow: 0 2px 4px #000; opacity: 0; }
+  .cap-plate.on { animation: capStamp .3s cubic-bezier(.25,1.5,.4,1) forwards; }
+  @keyframes capStamp { /* スタンプがガシャンと押される */
+    0% { opacity: 0; transform: scale(2.6) rotate(-10deg); }
+    55% { opacity: 1; transform: scale(.94) rotate(-2deg); }
+    100% { opacity: 1; transform: scale(1) rotate(-2deg); } }
+  .cap-sub, #capture-fx .btn-cap { opacity: 0; }
+  #capture-fx.stamped .cap-sub, #capture-fx.stamped .btn-cap { animation: capFadeUp .4s .12s forwards; }
+  @keyframes capFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  #capture-fx.cap-shake { animation: gfxShake .4s; }
   .cap-plate b { color: #4ad8ff; }
   .cap-sub { position: relative; z-index: 1; font-size: 13px; font-weight: 900; color: #ffd24a; text-align: center; text-shadow: 0 1px 3px #000; }
   .btn-cap { position: relative; z-index: 1; margin-top: 4px; padding: 11px 46px; font-size: 15px; font-weight: 900;
@@ -1517,6 +1584,8 @@
   <!-- ===== 捕獲演出 ===== -->
   <div id="capture-fx" class="hidden">
     <div class="cap-burst"></div>
+    <canvas id="cap-bolts"></canvas>
+    <div class="cap-flash" id="cap-flash"></div>
     <div class="cap-art" id="cap-art"></div>
     <div class="cap-plate"><b id="cap-name"></b> を捕獲した！</div>
     <div class="cap-sub" id="cap-sub"></div>
@@ -1863,9 +1932,10 @@ function switchDeck(dir) {
   toast(`デッキ${S.deckIdx + 1}に切り替えた`);
 }
 function teamIds() {
-  const manual = activeDeck().filter(id => S.restored[id] !== undefined);
+  const manual = activeDeck().filter(id => S.restored[id] !== undefined && DINO_MAP[id]);
   if (manual.length) return manual.slice(0, TEAM_MAX);
-  return Object.keys(S.restored).sort((a, b) => dinoPower(b) - dinoPower(a)).slice(0, TEAM_MAX);
+  return Object.keys(S.restored).filter(id => DINO_MAP[id]) // 古い/壊れたセーブの未知IDは無視
+    .sort((a, b) => dinoPower(b) - dinoPower(a)).slice(0, TEAM_MAX);
 }
 function toggleTeam(id) {
   let deck = activeDeck().slice();
@@ -4172,17 +4242,78 @@ function restore(id) {
   }, 950);
 }
 
-// 本家風「[名前]を捕獲した」フルスクリーン演出
+// 本家風「[名前]を捕獲した」フルスクリーン演出（フラッシュ→どアップスラム→スタンプ→稲妻）
+let capTimers = [], capRaf = 0;
 function openCaptureFx(id, isAlt) {
   const d = DINO_MAP[id];
+  const fx = document.getElementById('capture-fx');
   document.getElementById('cap-art').innerHTML = dinoArtHTML(id, isAlt);
   document.getElementById('cap-name').textContent = `[${d.name}]`;
   document.getElementById('cap-sub').innerHTML =
     `【${RARITY_NAME[d.rarity]}】 パワー ${dinoPower(id)}${isAlt ? '<br>✨ 色違い個体！' : ''}`;
-  document.getElementById('capture-fx').classList.remove('hidden');
-  sfx('restore');
+  fx.classList.remove('hidden', 'stamped');
+  const plate = fx.querySelector('.cap-plate');
+  plate.classList.remove('on');
+  const flash = document.getElementById('cap-flash');
+  flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
+  const art = document.getElementById('cap-art');
+  art.style.animation = 'none'; void art.offsetWidth; art.style.animation = '';
+  fx.classList.remove('cap-shake'); void fx.offsetWidth; fx.classList.add('cap-shake');
+  sfx('roar');
+  capTimers.forEach(clearTimeout); capTimers = [];
+  capTimers.push(setTimeout(() => {
+    plate.classList.add('on');
+    fx.classList.add('stamped');
+    sfx('hit');
+  }, 520));
+  capBoltsStart();
+}
+function capBoltsStart() { // 恐竜の体に走る稲妻（canvas描画）
+  const fx = document.getElementById('capture-fx');
+  const cv = document.getElementById('cap-bolts');
+  cv.width = fx.clientWidth; cv.height = fx.clientHeight;
+  const ctx = cv.getContext('2d');
+  let last = 0;
+  cancelAnimationFrame(capRaf);
+  const loop = (ts) => {
+    if (fx.classList.contains('hidden')) { ctx.clearRect(0, 0, cv.width, cv.height); return; }
+    capRaf = requestAnimationFrame(loop);
+    if (ts - last < 95) return;
+    last = ts;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (Math.random() < 0.6) {
+      const n = 1 + Math.floor(Math.random() * 2);
+      for (let b = 0; b < n; b++) capBolt(ctx, cv.width, cv.height);
+    }
+  };
+  capRaf = requestAnimationFrame(loop);
+}
+function capBolt(ctx, W, H) {
+  let x = W / 2 + (Math.random() - 0.5) * W * 0.32;
+  let y = H * 0.36 + (Math.random() - 0.5) * H * 0.22;
+  const ang = Math.random() * Math.PI * 2;
+  const len = 40 + Math.random() * 95;
+  ctx.strokeStyle = Math.random() < 0.4 ? 'rgba(225,248,255,.95)' : 'rgba(74,216,255,.85)';
+  ctx.lineWidth = 1.2 + Math.random() * 1.7;
+  ctx.lineJoin = 'miter';
+  ctx.shadowColor = 'rgba(74,216,255,.9)'; ctx.shadowBlur = 9;
+  ctx.beginPath(); ctx.moveTo(x, y);
+  const segs = 5 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < segs; i++) {
+    x += Math.cos(ang) * (len / segs) + (Math.random() - 0.5) * 28;
+    y += Math.sin(ang) * (len / segs) + (Math.random() - 0.5) * 28;
+    ctx.lineTo(x, y);
+    if (Math.random() < 0.32) { // 枝分かれ
+      ctx.lineTo(x + (Math.random() - 0.5) * 44, y + (Math.random() - 0.5) * 44);
+      ctx.moveTo(x, y);
+    }
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
 }
 function closeCaptureFx() {
+  cancelAnimationFrame(capRaf);
+  capTimers.forEach(clearTimeout); capTimers = [];
   document.getElementById('capture-fx').classList.add('hidden');
   renderAll();
 }
@@ -5174,15 +5305,18 @@ function renderField() {
   const list = document.getElementById('field-list');
   if (mapSel === null || (mapSel > 0 && !S.cleared[mapSel - 1])) mapSel = S.areaIdx;
 
-  // ===== 島マップ =====
-  let nodes = '';
+  // ===== 島マップ（偵察衛星ビュー） =====
+  let pins = '';
   AREAS.forEach((a, i) => {
     const locked = i > 0 && !S.cleared[i - 1];
     const p = MAP_POS[i];
-    nodes += `<div class="map-node${locked ? ' locked' : ''}${i === S.areaIdx ? ' current' : ''}" style="left:${p.x}%;top:${p.y}%" onclick="mapPick(${i})">` +
-      `<div class="dot"></div>` +
-      `<div class="nlabel">${locked ? '？？？' : a.name}</div>` +
-      `<div class="nprog">${locked ? '🔒' : '探索率 ' + S.progress[i] + '%' + (S.cleared[i] ? ' ✅' : '')}</div></div>`;
+    pins += `<div class="map-pin${locked ? ' locked' : ''}${i === S.areaIdx ? ' current' : ''}" style="left:${p.x}%;top:${p.y}%" onclick="mapPick(${i})">` +
+      `<div class="ring">${locked ? '<div class="plock">🔒</div>' : fieldArt(i)}</div>` +
+      (!locked && S.bossReady[i] ? `<span class="pboss">💀</span>` : '') +
+      (!locked && S.cleared[i] ? `<span class="pclear">✅</span>` : '') +
+      `<div class="tip"></div>` +
+      `<div class="plabelwrap"><div class="plabel">${locked ? '？？？' : a.name}</div>` +
+      `<div class="pprog">${locked ? '' : '探索率 ' + S.progress[i] + '%'}</div></div></div>`;
   });
   const sp = MAP_POS[mapSel], cp = MAP_POS[S.areaIdx];
   const sel = AREAS[mapSel];
@@ -5190,12 +5324,26 @@ function renderField() {
     const known = S.restored[id] !== undefined;
     return `<span class="pool-art${known ? '' : ' silhouette'}" title="${known ? DINO_MAP[id].name : '？？？'}">${dinoArtHTML(id)}</span>`;
   }).join('');
+  // 現在地→選択地点の点線ルート（アスペクト比1:1.15に合わせたviewBox）
+  const route = mapSel !== S.areaIdx
+    ? `<svg class="map-route" viewBox="0 0 100 115" preserveAspectRatio="none">` +
+      `<path d="M ${cp.x} ${(cp.y * 1.15).toFixed(1)} Q ${((cp.x + sp.x) / 2).toFixed(1)} ${(((cp.y + sp.y) / 2) * 1.15 - 7).toFixed(1)} ${sp.x} ${(sp.y * 1.15).toFixed(1)}"/></svg>`
+    : '';
   list.innerHTML =
     `<div id="island-map">` +
+    `<div class="map-zoom" id="map-zoom">` +
     `<img class="mapbg" src="images/island-map.jpg" onerror="this.onerror=null;this.src=islandMapBg()">` +
+    `<div class="map-clouds"></div>` +
+    route +
     `<div class="map-target" style="left:${sp.x}%;top:${sp.y}%"></div>` +
     `<div class="map-me" style="left:${cp.x}%;top:${cp.y}%">🚙</div>` +
-    nodes +
+    pins +
+    `</div>` +
+    `<div class="map-grid"></div>` +
+    `<div class="mapc tl"></div><div class="mapc tr"></div><div class="mapc bl"></div><div class="mapc br"></div>` +
+    `<div class="map-hud tl">SATELLITE VIEW <span class="liveDot">●</span> LIVE</div>` +
+    `<div class="map-hud tr">N ▲</div>` +
+    `<div class="map-hud br">ISLA DOMINION ─ 32.4°N 141.8°E</div>` +
     `</div>` +
     `<button class="btn-mapgo" onclick="selectArea(${mapSel})">🦖 ${sel.name} を探索する</button>` +
     `<div class="panel map-detail">` +
@@ -5204,6 +5352,11 @@ function renderField() {
     `<div class="field-pool">${poolHTML}</div>` +
     `<div class="terrain-note">地形効果：${TYPE_INFO[sel.terrain].icon}${TYPE_INFO[sel.terrain].name}タイプの力が増す（×1.3）</div>` +
     `</div>`;
+  // 選択地点へカメラがゆっくり寄る
+  requestAnimationFrame(() => {
+    const z = document.getElementById('map-zoom');
+    if (z) { z.style.transformOrigin = `${sp.x}% ${sp.y}%`; z.style.transform = 'scale(1.16)'; }
+  });
 
   // ===== アリーナ（CPUライバルとのランク戦） =====
   const arena = document.createElement('div');
