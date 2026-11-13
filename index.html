@@ -1317,20 +1317,85 @@
   .dino-card.r-SR { animation: srglow 1.6s infinite alternate; }
   @keyframes srglow { from { box-shadow: 0 0 12px rgba(255,179,0,.5); } to { box-shadow: 0 0 28px rgba(255,190,40,.95); } }
 
+  /* ===== バトル装甲UI（本家寄せ） ===== */
+  #battle-box {
+    border: 1px solid #3a5468;
+    background: linear-gradient(180deg, rgba(17,26,38,.96), rgba(8,13,20,.96));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 60px rgba(0,0,0,.72);
+  }
+  #battle-box .boss-title {
+    background: linear-gradient(180deg, #2c3a4e, #15202e 70%);
+    border: 1px solid #4a5c72; border-radius: 8px; padding: 5px 10px;
+    letter-spacing: .1em; box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 3px 8px rgba(0,0,0,.5);
+  }
+  .ehp-tag {
+    display: inline-block; background: linear-gradient(180deg, #ff5a3c, #a81c0c);
+    color: #fff; font-size: 10px; font-weight: 900; letter-spacing: .2em;
+    padding: 1px 8px; border-radius: 4px; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  }
+  .bar-outer { position: relative; overflow: hidden; }
+  .bar-inner { position: relative; z-index: 1; }
+  .bar-ghost { /* ダメージの白い残りゲージがジワッと減る */
+    position: absolute; left: 0; top: 0; bottom: 0; z-index: 0;
+    background: #ffe9b0; transition: width .8s ease .35s;
+  }
+  .ehp-outer { height: 14px; border: 1px solid #5a3a34;
+    background: #1c0e0c; box-shadow: inset 0 2px 5px rgba(0,0,0,.7); }
+
+  /* 爪の斬撃エフェクト */
+  .claw-fx {
+    position: fixed; z-index: 95; width: 120px; height: 120px; pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-18deg);
+  }
+  .claw-fx.big { width: 175px; height: 175px; transform: translate(-50%, -50%) rotate(14deg); }
+  .claw-fx i {
+    position: absolute; top: -8%; bottom: -8%; width: 8%; left: 28%; border-radius: 999px;
+    background: linear-gradient(180deg, transparent, currentColor 28%, #fff 50%, currentColor 72%, transparent);
+    box-shadow: 0 0 12px currentColor;
+    transform: scaleY(0); transform-origin: top;
+    animation: clawRip .24s ease-out forwards;
+  }
+  .claw-fx i:nth-child(2) { left: 47%; animation-delay: .05s; }
+  .claw-fx i:nth-child(3) { left: 66%; animation-delay: .1s; }
+  @keyframes clawRip { 0% { transform: scaleY(0); opacity: 1; } 55% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
+
+  /* 開幕：敵があらわれた！！ */
+  .b-appear {
+    position: fixed; left: 0; right: 0; top: 24%; z-index: 66; text-align: center;
+    font-size: 24px; font-weight: 900; color: #fff; pointer-events: none;
+    text-shadow: 0 0 12px rgba(255,61,0,.9), 0 3px 4px #000, 0 0 2px #ff3d00;
+    letter-spacing: .06em; animation: bang .4s;
+  }
+  .b-appear.hidden { display: none; }
+
   /* ===== ひっさつカットイン ===== */
   #cutin {
     position: fixed; inset: 0; z-index: 65; display: flex; align-items: center;
-    background:
-      repeating-linear-gradient(115deg, rgba(255,61,0,.16) 0 14px, transparent 14px 28px),
-      linear-gradient(90deg, rgba(10,0,0,.92), rgba(60,5,0,.75) 55%, rgba(10,0,0,.92));
-    overflow: hidden;
+    overflow: hidden; background: rgba(4, 1, 0, .55);
   }
-  #cutin .cutin-art { flex: 0 0 46%; display: flex; justify-content: center; animation: cutin-art .3s cubic-bezier(.2,1.4,.4,1); }
+  #cutin::before { /* 斜めの疾走帯 */
+    content: ''; position: absolute; left: -12%; right: -12%; top: 50%; height: 52%;
+    transform: translateY(-50%) skewY(-5deg);
+    background: linear-gradient(90deg, rgba(14,4,0,.97), rgba(52,8,0,.93) 50%, rgba(14,4,0,.97));
+    border-top: 3px solid #ff7b2e; border-bottom: 3px solid #ff7b2e;
+    box-shadow: 0 0 46px rgba(255,100,20,.4), inset 0 0 60px rgba(0,0,0,.6);
+    animation: cutinBand .22s ease-out;
+  }
+  @keyframes cutinBand { from { transform: translateY(-50%) skewY(-5deg) scaleY(.05); } to { transform: translateY(-50%) skewY(-5deg) scaleY(1); } }
+  #cutin::after { /* 疾走スピード線 */
+    content: ''; position: absolute; left: -50%; right: -50%; top: 50%; height: 48%;
+    transform: translateY(-50%) skewY(-5deg);
+    background: repeating-linear-gradient(90deg, rgba(255,150,60,.2) 0 2px, transparent 2px 38px, rgba(255,220,120,.12) 38px 41px, transparent 41px 90px);
+    animation: cutinSpeed .5s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes cutinSpeed { from { transform: translateY(-50%) skewY(-5deg) translateX(0); } to { transform: translateY(-50%) skewY(-5deg) translateX(-90px); } }
+  #cutin .cutin-art { flex: 0 0 46%; display: flex; justify-content: center; position: relative; z-index: 1; animation: cutin-art .32s cubic-bezier(.2,1.3,.4,1); }
   #cutin .cutin-art img { max-width: 100%; max-height: 46vh; filter: drop-shadow(0 0 22px rgba(255,120,0,.9)); }
   #cutin .cutin-art .dino-emoji { font-size: 110px; filter: drop-shadow(0 0 22px rgba(255,120,0,.9)); }
-  @keyframes cutin-art { from { transform: translateX(-70%) scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
-  #cutin .cutin-text { flex: 1; animation: cutin-txt .3s .08s cubic-bezier(.2,1.4,.4,1) backwards; }
-  @keyframes cutin-txt { from { transform: translateX(60%); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes cutin-art { from { transform: translateX(-130%) scale(.8); opacity: 0; } 70% { transform: translateX(4%) scale(1.02); opacity: 1; } to { transform: none; opacity: 1; } }
+  #cutin .cutin-text { flex: 1; position: relative; z-index: 1; animation: cutin-txt .3s .1s cubic-bezier(.2,1.3,.4,1) backwards; }
+  @keyframes cutin-txt { from { transform: translateX(110%) scale(1.4); opacity: 0; } 70% { transform: translateX(-3%) scale(.98); opacity: 1; } to { transform: none; opacity: 1; } }
   .cutin-skill {
     font-size: 30px; font-weight: 900; color: #ffd24a; line-height: 1.25;
     text-shadow: 0 0 14px rgba(255,106,0,.9), 0 3px 3px #000;
@@ -1564,10 +1629,10 @@
         <div class="bf-team" id="b-team"></div>
       </div>
       <div class="small" id="b-type" style="margin-bottom:6px"></div>
-      <div class="bar-label"><span>敵HP</span><span id="b-boss-hp-text"></span></div>
-      <div class="bar-outer"><div class="bar-inner bar-boss" id="b-boss-hp-bar" style="width:100%"></div></div>
+      <div class="bar-label"><span class="ehp-tag">ENEMY</span><span id="b-boss-hp-text"></span></div>
+      <div class="bar-outer ehp-outer"><div class="bar-ghost" id="b-boss-hp-ghost" style="width:100%"></div><div class="bar-inner bar-boss" id="b-boss-hp-bar" style="width:100%"></div></div>
       <div class="bar-label" style="margin-top:8px"><span>チームHP</span><span id="b-php-text"></span></div>
-      <div class="bar-outer"><div class="bar-inner bar-php" id="b-php-bar" style="width:100%"></div></div>
+      <div class="bar-outer"><div class="bar-ghost" id="b-php-ghost" style="width:100%"></div><div class="bar-inner bar-php" id="b-php-bar" style="width:100%"></div></div>
       <div class="bar-label" style="margin-top:8px"><span><svg class="ico" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5c.8 3-2.2 4.3-2.2 7a4.3 4.3 0 0 0 8.6 0c0-1.2-.5-2.2-1.1-3.2 1.9 1.4 3 3.6 3 5.9a8.3 8.3 0 1 1-16.6 0C3.7 7.6 9.4 6 12 2.5Z"/></svg> ひっさつゲージ</span><span id="b-gauge-text">0%</span></div>
       <div class="bar-outer" style="height:8px"><div class="bar-inner bar-gauge" id="b-gauge-bar" style="width:0%"></div></div>
       <div class="battle-log" id="b-log">たたかえ！</div>
@@ -1576,6 +1641,7 @@
       <button class="btn btn-sub" style="margin-top:8px" id="btn-flee" onclick="fleeBattle()">にげる</button>
     </div>
     <div class="vs-stamp hidden" id="vs-stamp">VS</div>
+    <div class="b-appear hidden" id="b-appear"></div>
   </div>
 
   <!-- ===== ひっさつカットイン ===== -->
@@ -3802,6 +3868,9 @@ function startBattle(opp) {
   const box = document.getElementById('battle-box');
   const vs = document.getElementById('vs-stamp');
   box.classList.remove('intro'); void box.offsetWidth; box.classList.add('intro');
+  const ap = document.getElementById('b-appear');
+  ap.textContent = (opp.title || opp.name) + ' が あらわれた！！';
+  ap.classList.remove('hidden');
   vs.classList.remove('hidden');
   document.getElementById('btn-attack').disabled = true;
   sfx('alert');
@@ -3809,6 +3878,7 @@ function startBattle(opp) {
   setTimeout(() => {
     box.classList.remove('intro');
     vs.classList.add('hidden');
+    document.getElementById('b-appear').classList.add('hidden');
     if (battle) { battle.intro = false; document.getElementById('btn-attack').disabled = false; }
   }, 1000);
 }
@@ -3970,9 +4040,13 @@ function renderBattle() {
     });
   }
   document.getElementById('b-boss-hp-text').textContent = `${Math.max(0, battle.hp)}/${battle.hpMax}`;
-  document.getElementById('b-boss-hp-bar').style.width = Math.max(0, battle.hp / battle.hpMax * 100) + '%';
+  const ew = Math.max(0, battle.hp / battle.hpMax * 100) + '%';
+  document.getElementById('b-boss-hp-bar').style.width = ew;
+  document.getElementById('b-boss-hp-ghost').style.width = ew; // CSSの遅延transitionでジワッと追従
   document.getElementById('b-php-text').textContent = `${Math.max(0, battle.php)}/${battle.phpMax}`;
-  document.getElementById('b-php-bar').style.width = Math.max(0, battle.php / battle.phpMax * 100) + '%';
+  const pw = Math.max(0, battle.php / battle.phpMax * 100) + '%';
+  document.getElementById('b-php-bar').style.width = pw;
+  document.getElementById('b-php-ghost').style.width = pw;
   document.getElementById('b-php-bar').classList.toggle('low', battle.php / battle.phpMax <= 0.25);
   document.getElementById('b-boss-hp-bar').classList.toggle('low', battle.hp / battle.hpMax <= 0.25);
   document.getElementById('b-gauge-text').textContent = battle.gauge + '%';
@@ -3984,6 +4058,19 @@ function shakeBattle(hard) {
   const cls = hard ? 'shake-hard' : 'shake-soft';
   box.classList.remove('shake-soft', 'shake-hard'); void box.offsetWidth;
   box.classList.add(cls);
+}
+const CLAW_COLOR = { meat: '#ffab5e', plant: '#8aff7a', aqua: '#6ad8ff' };
+function clawFx(el, color, big) { // 爪の三連斬撃
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const c = document.createElement('div');
+  c.className = 'claw-fx' + (big ? ' big' : '');
+  c.style.left = (r.left + r.width / 2 + rand(-10, 10)) + 'px';
+  c.style.top = (r.top + r.height / 2 + rand(-8, 8)) + 'px';
+  c.style.color = color || '#ffe9b0';
+  c.innerHTML = '<i></i><i></i><i></i>';
+  document.body.appendChild(c);
+  setTimeout(() => c.remove(), 480);
 }
 function dmgPop(dmg, big, anchorEl) {
   const art = anchorEl || document.getElementById('b-boss-art');
@@ -4036,6 +4123,7 @@ function attack() {
         battle.gauge = Math.min(100, battle.gauge + rand(4, 7));
         sfx(crit ? 'crit' : 'hit');
         bfAnim(bossArt, 'bf-hit'); // 敵がのけぞる
+        clawFx(bossArt, CLAW_COLOR[DINO_MAP[u.id].type], crit || DINO_MAP[u.id].rarity !== 'N');
         // SR/SSRは攻撃エフェクトを格上げ（大きな炎＋画面シェイク＋大ダメージ表示）
         const rar = DINO_MAP[u.id].rarity;
         if (rar === 'SSR') {
@@ -4080,6 +4168,7 @@ function enemyTurn() {
     target.hp -= dmg;
     sfx('hit');
     bfAnim(tEl, 'bf-hit');
+    clawFx(tEl, '#ff6a6a', crit);
     flameBurst(tEl, 90);
     dmgPop(dmg, crit, tEl);
     const td = DINO_MAP[target.id];
@@ -4121,6 +4210,7 @@ function skillAttack() {
     const lu = battle.units ? battle.units[0] : null;
     const dmg = lu ? Math.round(effUnitPow(lu, battle.opp) * 3.5) : Math.round(effTeamPower(battle.opp.dtype, battle.opp.terrain) * 3);
     chargeTo(memberEl(leader), document.getElementById('b-boss-art'), 0.85); // リーダーが突撃して叩き込む
+    clawFx(document.getElementById('b-boss-art'), CLAW_COLOR[ld.type], true);
     battle.hp -= dmg;
     skillVfx(DINO_MAP[teamIds()[0]].type); // リーダーのタイプで3D演出
     dmgPop(dmg, true);
