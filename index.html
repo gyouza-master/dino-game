@@ -2473,7 +2473,7 @@ function WMAT(color) { // 揺れる葉っぱ用マテリアル
   if (!_wmatCache[color]) {
     const m = new THREE.MeshLambertMaterial({ color });
     m.color.convertSRGBToLinear();
-    _wmatCache[color] = windify(m, '0.06 * (position.y + 0.6)');
+    _wmatCache[color] = windify(m, '0.02 * (position.y * 0.5 + 0.6)');
   }
   return _wmatCache[color];
 }
@@ -2724,11 +2724,12 @@ function makeHybridTree() {
   return g;
 }
 const _bbMats = {};
+const RIGID_BB = { ribs1: 1, deadtree1: 1, driftwood1: 1, chartree1: 1 }; // 骨・枯れ木・流木・炭化木は揺れない
 function billboardMat(n) {
   if (!_bbMats[n]) {
-    _bbMats[n] = windify(new THREE.MeshLambertMaterial({
-      map: _treeTex[n], alphaTest: 0.45, side: THREE.DoubleSide }),
-      '0.05 * uv.y * uv.y'); // 根本は固定、梢ほど大きく揺れる
+    const m = new THREE.MeshLambertMaterial({ map: _treeTex[n], alphaTest: 0.45, side: THREE.DoubleSide });
+    // 生きた草木だけ、梢がかすかに揺れる程度に（葦は少し大きめ）
+    _bbMats[n] = RIGID_BB[n] ? m : windify(m, n === 'reeds1' ? '0.028 * uv.y * uv.y' : '0.016 * uv.y * uv.y');
   }
   return _bbMats[n];
 }
@@ -3063,7 +3064,7 @@ function makeGrassChunk(cfg) {
   // 地面を埋める草（GPUインスタンシングで1400本を1描画）
   const N = 1400;
   const geo = GEO('grassBlade', () => { const g = new THREE.ConeGeometry(0.05, 0.6, 4); g.translate(0, 0.3, 0); return g; });
-  if (!_grassMat) _grassMat = windify(new THREE.MeshLambertMaterial({ color: 0xffffff }), '0.5 * max(position.y, 0.0)');
+  if (!_grassMat) _grassMat = windify(new THREE.MeshLambertMaterial({ color: 0xffffff }), '0.33 * max(position.y, 0.0)');
   const m = new THREE.InstancedMesh(geo, _grassMat, N);
   const o = new THREE.Object3D();
   const col = new THREE.Color();
