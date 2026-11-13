@@ -140,8 +140,8 @@
     position: relative; border-radius: 12px; overflow: hidden;
     border: 1px solid #24435c; padding: 16px 6px 8px;
     background:
-      linear-gradient(180deg, rgba(64,224,208,.07), transparent 26%),
-      radial-gradient(ellipse 120% 52% at 50% 104%, rgba(64,224,208,.13), transparent 60%),
+      linear-gradient(180deg, rgba(6,13,20,.5), rgba(6,13,20,.18) 30%, rgba(6,13,20,.55) 100%),
+      url('images/museum-hall.jpg') center 38% / cover,
       linear-gradient(180deg, #060d14 0%, #0a1620 46%, #16242f 47%, #0c141e 100%);
     box-shadow: inset 0 0 46px rgba(0,0,0,.65);
   }
@@ -651,6 +651,37 @@
     background: radial-gradient(ellipse 90% 60% at 50% 110%, rgba(0,0,0,.25), transparent 60%);
   }
   .bf-vs { text-align: center; color: #ffb300; font-weight: 900; font-size: 11px; letter-spacing: .35em; margin: 4px 0 6px; text-shadow: 0 0 8px rgba(255,179,0,.5); }
+  /* ===== 専用バトル戦場（本家風の見下ろし決闘場） ===== */
+  .battle-bg {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background-size: cover; background-position: center 30%;
+    animation: battleBgZoom 20s ease-in-out infinite alternate;
+  }
+  .battle-bg::after { /* 文字の可読性用に上下を締める */
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(5,8,14,.72), rgba(5,8,14,.15) 22%, rgba(5,8,14,.1) 55%, rgba(5,8,14,.78) 100%);
+  }
+  @keyframes battleBgZoom { from { transform: scale(1); } to { transform: scale(1.07); } }
+  #battle-box > * { position: relative; }
+  #battle-box > .battle-bg { position: absolute; }
+
+  /* ===== 勝敗エンブレム ===== */
+  #result-emblem {
+    position: fixed; inset: 0; z-index: 92; display: flex; align-items: center; justify-content: center;
+    background: rgba(2, 4, 8, .5); pointer-events: none;
+  }
+  #result-emblem.hidden { display: none; }
+  #result-emblem img {
+    width: min(76vw, 400px); filter: drop-shadow(0 18px 40px rgba(0,0,0,.75));
+    animation: emblemSlam .55s cubic-bezier(.2, 1.25, .4, 1);
+  }
+  @keyframes emblemSlam {
+    0% { transform: scale(3) rotate(-7deg); opacity: 0; }
+    55% { transform: scale(.95) rotate(1deg); opacity: 1; }
+    75% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
   /* ===== 発動バナー（地形効果・スキル） ===== */
   .b-banner {
     position: absolute; left: -4%; right: -4%; top: 37%; z-index: 5; padding: 9px 0;
@@ -1701,6 +1732,7 @@
   <!-- ===== バトルモーダル ===== -->
   <div class="modal-bg hidden" id="battle-modal">
     <div class="modal" id="battle-box">
+      <div class="battle-bg" id="battle-bg"></div>
       <div class="boss-title" id="b-boss-name"></div>
       <div class="battlefield">
         <div class="boss-push" id="boss-push"><div class="boss-art" id="b-boss-art"></div></div>
@@ -1784,6 +1816,7 @@
 
   <!-- ===== フィニッシュ演出 ===== -->
   <div id="finish-fx" class="hidden"><div class="finish-text">FINISH!!</div></div>
+  <div id="result-emblem" class="hidden"><img id="result-emblem-img" src="" alt=""></div>
 
   <!-- ===== デイリーミッション ===== -->
   <div id="mission-modal" class="hidden" onclick="closeMissions()">
@@ -4061,7 +4094,11 @@ function startBattle(opp) {
     busy: false,
     spd: 1, nextAt: 0, // オート進行（本家準拠）と倍速
   };
-  // 3Dフィールドを戦場の背景にする（探索タブに切り替えてUIだけ隠す）
+  // 専用戦場（本家風）：フィールド対応の決闘場、アリーナは闘技場
+  const BATTLE_BG = ['battle-jungle', 'battle-swamp', 'battle-volcano', 'battle-coast', 'battle-island'];
+  const bgName = opp.type === 'arena' ? 'battle-arena' : BATTLE_BG[S.areaIdx] || 'battle-jungle';
+  document.getElementById('battle-bg').style.backgroundImage = `url(images/${bgName}.jpg)`;
+  // 3Dフィールドを奥の背景にする（探索タブに切り替えてUIだけ隠す）
   if (!document.body.classList.contains('explore-mode')) switchTab('explore');
   document.body.classList.add('battle-mode');
   const ti = TYPE_INFO[opp.dtype];
@@ -4376,10 +4413,20 @@ function finishWin() {
   setTimeout(() => {
     fx.classList.add('hidden');
     if (!battle) return;
-    battle.opp.type === 'hunter' ? winHunterBattle()
-      : battle.opp.type === 'arena' ? winArenaBattle()
-      : winBossBattle();
+    showResultEmblem(true, () => {
+      if (!battle) return;
+      battle.opp.type === 'hunter' ? winHunterBattle()
+        : battle.opp.type === 'arena' ? winArenaBattle()
+        : winBossBattle();
+    });
   }, 950);
+}
+function showResultEmblem(win, cb) { // 金のWIN／ひび割れたLOSEのエンブレムをドン！
+  const o = document.getElementById('result-emblem');
+  document.getElementById('result-emblem-img').src = `images/${win ? 'win' : 'lose'}-emblem.png`;
+  o.classList.remove('hidden');
+  if (win) sfx('hit');
+  setTimeout(() => { o.classList.add('hidden'); if (cb) cb(); }, 1250);
 }
 function attack() {
   if (!battle || battle.finishing || battle.intro || battle.busy) return;
@@ -4565,6 +4612,7 @@ function winHunterBattle() {
 }
 function loseBattle() {
   sfx('lose');
+  showResultEmblem(false);
   renderBattle();
   document.getElementById('btn-attack').disabled = true;
   document.getElementById('btn-skill').classList.add('hidden');
