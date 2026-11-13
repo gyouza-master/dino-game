@@ -129,35 +129,67 @@
   .deck-stats .ds { font-size: 11px; color: #7d99ad; letter-spacing: .08em; }
   .deck-stats .ds b { color: #ffd24a; font-size: 18px; margin-left: 4px; }
   .deck-stats .ds-types { font-size: 12px; color: #cfe8ef; }
-  .formation {
+  .terrain-row { display: flex; gap: 4px; margin-bottom: 10px; }
+  .tchip { flex: 1; text-align: center; font-size: 11px; font-weight: 900;
+    background: linear-gradient(180deg, #10202c, #0a141e); border: 1px solid #1d3a46;
+    border-radius: 8px; padding: 4px 2px 3px; color: #7d99ad; }
+  .tchip b { display: block; font-size: 10px; color: #4d6a7a; }
+  .tchip.up b { color: #35e05a; }
+  .tchip.cur { border-color: #ffd24a; box-shadow: 0 0 8px rgba(255,210,74,.25); }
+  .formation { /* 博物館の展示ホール */
     position: relative; border-radius: 12px; overflow: hidden;
-    border: 1px solid #17414d; padding: 14px 6px 8px;
+    border: 1px solid #24435c; padding: 16px 6px 8px;
     background:
-      radial-gradient(ellipse 90% 60% at 50% 0%, rgba(64,224,208,.16), transparent 60%),
-      repeating-conic-gradient(#0b2029 0% 25%, #081820 0% 50%) 0 0 / 30px 30px;
-    box-shadow: inset 0 0 46px rgba(0,0,0,.6);
+      linear-gradient(180deg, rgba(64,224,208,.07), transparent 26%),
+      radial-gradient(ellipse 120% 52% at 50% 104%, rgba(64,224,208,.13), transparent 60%),
+      linear-gradient(180deg, #060d14 0%, #0a1620 46%, #16242f 47%, #0c141e 100%);
+    box-shadow: inset 0 0 46px rgba(0,0,0,.65);
+  }
+  .formation::before { /* 天井からのスポットライト光条 */
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(100deg, transparent 12%, rgba(190,235,255,.055) 17%, transparent 23%),
+      linear-gradient(80deg, transparent 44%, rgba(190,235,255,.065) 50%, transparent 56%),
+      linear-gradient(100deg, transparent 76%, rgba(190,235,255,.055) 82%, transparent 88%);
   }
   .formation-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
   .formation-grid .fslot { grid-column: span 2; }
   .formation-grid .fslot:nth-child(4) { grid-column: 2 / span 2; }
   .formation-grid .fslot:nth-child(5) { grid-column: 4 / span 2; }
   .fslot { position: relative; aspect-ratio: 3 / 3.5; cursor: pointer; }
-  .fslot .pad {
+  .fslot .pad { /* 展示台座の天板 */
     position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%);
-    width: 82%; height: 30px;
-    background: radial-gradient(ellipse at center, rgba(64,224,208,.5) 0%, rgba(64,224,208,.16) 55%, transparent 72%);
-    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    width: 74%; height: 15px; border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 38%, #46586e, #243244 68%, #1a2434);
+    border: 1px solid #52647a;
+    box-shadow: 0 0 16px rgba(64,224,208,.22);
   }
-  .fslot.leader .pad { background: radial-gradient(ellipse at center, rgba(255,205,50,.65) 0%, rgba(255,205,50,.2) 55%, transparent 72%); }
+  .fslot .pad::before { /* 台座の胴 */
+    content: ''; position: absolute; top: 72%; left: 7%; width: 86%; height: 16px;
+    background: linear-gradient(180deg, #2c3a4e, #151e2c 80%);
+    clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);
+  }
+  .fslot .pad::after { /* 床の反射光 */
+    content: ''; position: absolute; top: 200%; left: 2%; width: 96%; height: 11px; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(64,224,208,.18), transparent 70%);
+  }
+  .fslot.leader .pad { border-color: #c2a24a; box-shadow: 0 0 18px rgba(255,205,50,.4);
+    background: radial-gradient(ellipse at 50% 38%, #6e5c38, #443620 68%, #2a2214); }
+  .fslot.leader .pad::before { background: linear-gradient(180deg, #4e4024, #241c10 80%); }
   .fslot img {
-    position: absolute; left: 0; right: 0; bottom: 22px;
-    width: 100%; height: calc(100% - 34px); object-fit: contain;
+    position: absolute; left: 0; right: 0; bottom: 31px;
+    width: 100%; height: calc(100% - 44px); object-fit: contain;
     filter: drop-shadow(0 8px 8px rgba(0,0,0,.7));
   }
   .fslot .dino-emoji {
-    position: absolute; left: 0; right: 0; bottom: 30px; text-align: center; font-size: 52px;
+    position: absolute; left: 0; right: 0; bottom: 38px; text-align: center; font-size: 48px;
   }
-  .fslot .fplate { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; }
+  .fslot .fplate { /* 真鍮の銘板風 */
+    position: absolute; left: 5%; right: 5%; bottom: 0; text-align: center;
+    background: linear-gradient(180deg, rgba(16,26,38,.92), rgba(8,14,22,.92));
+    border: 1px solid #3a5468; border-radius: 6px; padding: 2px 2px 3px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  }
   .fslot .fplate .n { display: block; font-size: 11px; font-weight: 900; color: #fff; text-shadow: 0 1px 3px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .fslot .fplate .s { display: block; font-size: 10px; color: #9fd8e8; }
   .fslot .fst { position: absolute; top: 0; left: 4px; color: #ffd24a; font-size: 10px; text-shadow: 0 1px 3px #000; z-index: 2; }
@@ -168,16 +200,22 @@
     color: #4d7c8c; font-size: 11px; line-height: 1.6;
   }
   .deck-btns { display: flex; gap: 8px; margin-top: 10px; }
-  .deck-btns .db-sub {
-    flex: 1; background: #12242e; color: #bfe3ec; border: 1px solid #1f4a56;
-    border-radius: 10px; padding: 11px 4px; font-weight: 900; font-size: 12px; cursor: pointer;
+  .deck-btns .db-sub { /* 鋼鉄ボタン */
+    flex: 1; color: #cfe3ec; cursor: pointer;
+    background: linear-gradient(180deg, #3c4a5c, #1e2a38 55%, #141e2a);
+    border: 1px solid #5a6c80; border-top-color: #8a9cb0;
+    border-radius: 10px; padding: 11px 4px; font-weight: 900; font-size: 12px;
+    box-shadow: 0 3px 0 #0c141e, inset 0 1px 0 rgba(255,255,255,.14); text-shadow: 0 1px 2px #000;
   }
+  .deck-btns .db-sub:active { transform: translateY(2px); box-shadow: 0 1px 0 #0c141e; }
   .deck-btns .db-main {
     flex: 1.4; background: linear-gradient(180deg, #17b8a6, #0d7d74); color: #eafffb;
     border: 1px solid #2dd4bf; border-radius: 10px; padding: 11px 4px;
     font-weight: 900; font-size: 14px; cursor: pointer; letter-spacing: .1em;
-    box-shadow: 0 4px 14px rgba(20,184,166,.35);
+    box-shadow: 0 3px 0 #09564e, 0 6px 14px rgba(20,184,166,.3), inset 0 1px 0 rgba(255,255,255,.25);
+    text-shadow: 0 1px 2px rgba(0,0,0,.4);
   }
+  .deck-btns .db-main:active { transform: translateY(2px); box-shadow: 0 1px 0 #09564e; }
   .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   .mslot { position: relative; aspect-ratio: 3 / 3.3; cursor: pointer; border-radius: 10px; background: rgba(8,20,27,.65); border: 1px solid #17303c; }
   .mslot .pad {
@@ -705,7 +743,7 @@
 
   /* ===== 島マップ（本家風の探索マップ） ===== */
   #island-map { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid #2a3850;
-    box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 60px rgba(0,0,0,.35); aspect-ratio: 1 / 1.12; }
+    box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 60px rgba(0,0,0,.35); aspect-ratio: 1 / 1.15; }
   #island-map .mapbg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .map-node { position: absolute; transform: translate(-50%, -50%); text-align: center; cursor: pointer; z-index: 3; }
   .map-node .dot { width: 44px; height: 24px; margin: 0 auto; border-radius: 50%;
@@ -1391,6 +1429,7 @@
           <span class="ds-types" id="team-types"></span>
           <span class="small" id="team-mode"></span>
         </div>
+        <div class="terrain-row" id="team-terrain"></div>
         <div class="formation">
           <div class="formation-grid" id="team-slots"></div>
         </div>
@@ -1877,6 +1916,16 @@ function renderTeam() {
   const tc = {};
   ids.forEach(id => { const t = DINO_MAP[id].type; tc[t] = (tc[t] || 0) + 1; });
   document.getElementById('team-types').innerHTML = Object.keys(tc).map(t => `${TYPE_INFO[t].icon}${TYPE_INFO[t].name}×${tc[t]}`).join('　');
+  // 本家風：フィールドごとの地形相性（デッキ戦力が何%伸びるか）
+  const tt = document.getElementById('team-terrain');
+  if (tt) {
+    const base = teamPower() || 1;
+    tt.innerHTML = AREAS.map((a, i) => {
+      const terr = ids.reduce((sum, id) => sum + dinoPower(id) * (DINO_MAP[id].type === a.terrain ? 1.3 : 1), 0);
+      const pct = Math.round((terr - base) / base * 100);
+      return `<div class="tchip${pct > 0 ? ' up' : ''}${i === S.areaIdx ? ' cur' : ''}">${a.icon}<b>${pct > 0 ? '▲+' + pct + '%' : '±0'}</b></div>`;
+    }).join('');
+  }
   const list = Object.keys(S.restored).sort((a, b) => dinoPower(b) - dinoPower(a));
   document.getElementById('team-list').innerHTML = list.length ? list.map(id => {
     const d = DINO_MAP[id];
@@ -5046,8 +5095,8 @@ function selectArea(i) {
   const a = AREAS[i];
   showStage(`<span class="stage-thumb">${fieldArt(i)}</span>`, `<span class="c-sys">${a.name}にやってきた</span>`, a.desc);
 }
-const MAP_POS = [ // 島マップ上のフィールド位置（%）
-  { x: 32, y: 68 }, { x: 56, y: 50 }, { x: 50, y: 17 }, { x: 20, y: 40 }, { x: 79, y: 71 },
+const MAP_POS = [ // 島マップ上のフィールド位置（%・island-map.jpgの地形に対応）
+  { x: 28, y: 79 }, { x: 52, y: 48 }, { x: 52, y: 18 }, { x: 16, y: 32 }, { x: 76, y: 72 },
 ];
 let mapSel = null;
 let _mapBG = null;
