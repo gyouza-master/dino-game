@@ -1,6 +1,6 @@
 // ダイナソー・ドミニオン Service Worker
 // HTMLはネット優先（更新が届く）、それ以外はキャッシュ優先（オフラインで遊べる）
-const CACHE = 'dino-v17';
+const CACHE = 'dino-v18';
 const CORE = [
   './',
   './index.html',

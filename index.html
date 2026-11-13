@@ -651,6 +651,20 @@
     background: radial-gradient(ellipse 90% 60% at 50% 110%, rgba(0,0,0,.25), transparent 60%);
   }
   .bf-vs { text-align: center; color: #ffb300; font-weight: 900; font-size: 11px; letter-spacing: .35em; margin: 4px 0 6px; text-shadow: 0 0 8px rgba(255,179,0,.5); }
+  /* ===== 発動バナー（地形効果・スキル） ===== */
+  .b-banner {
+    position: absolute; left: -4%; right: -4%; top: 37%; z-index: 5; padding: 9px 0;
+    text-align: center; font-size: 17px; font-weight: 900; color: #fff;
+    letter-spacing: .14em; text-shadow: 0 2px 3px #000; pointer-events: none;
+    transform: skewY(-3deg); animation: bBanner 1.35s ease forwards;
+  }
+  @keyframes bBanner {
+    0% { transform: skewY(-3deg) translateX(-110%); }
+    18% { transform: skewY(-3deg) translateX(0); }
+    80% { transform: skewY(-3deg) translateX(0); opacity: 1; }
+    100% { transform: skewY(-3deg) translateX(10%); opacity: 0; }
+  }
+
   /* ===== 押し相撲の戦線（綱引きゲージ） ===== */
   .boss-push { transition: transform .5s cubic-bezier(.3,1.1,.4,1); will-change: transform; }
   .bf-team { transition: transform .5s cubic-bezier(.3,1.1,.4,1); }
@@ -910,6 +924,17 @@
   #fog-b { animation: fogDriftB 71s linear infinite; }
   @keyframes fogDriftA { from { transform: translateX(0); } to { transform: translateX(33.333%); } }
   @keyframes fogDriftB { from { transform: translateX(0); } to { transform: translateX(-33.333%); } }
+
+  /* ===== 収集アニメ（拾った物がカウンターへ飛ぶ） ===== */
+  .fly-ico {
+    position: fixed; z-index: 70; width: 26px; height: 26px; object-fit: contain;
+    font-size: 20px; line-height: 26px; text-align: center; pointer-events: none;
+    transition: transform .58s cubic-bezier(.35, -0.25, .55, 1), opacity .58s ease-in;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
+  }
+  .chip-pop { animation: chipPop .32s; }
+  @keyframes chipPop { 40% { transform: scale(1.3); } }
+  .big-item { height: 76px; filter: drop-shadow(0 6px 12px rgba(0,0,0,.55)); }
 
   /* ===== 生成アセット（通貨アイコン・宝箱・テイマー） ===== */
   .ui-ico { width: 19px; height: 19px; object-fit: contain; vertical-align: -4px;
@@ -1693,8 +1718,9 @@
       <div class="bar-label" style="margin-top:8px"><span><svg class="ico" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5c.8 3-2.2 4.3-2.2 7a4.3 4.3 0 0 0 8.6 0c0-1.2-.5-2.2-1.1-3.2 1.9 1.4 3 3.6 3 5.9a8.3 8.3 0 1 1-16.6 0C3.7 7.6 9.4 6 12 2.5Z"/></svg> ひっさつゲージ</span><span id="b-gauge-text">0%</span></div>
       <div class="bar-outer" style="height:8px"><div class="bar-inner bar-gauge" id="b-gauge-bar" style="width:0%"></div></div>
       <div class="battle-log" id="b-log">たたかえ！</div>
-      <button class="btn btn-explore" id="btn-attack" onclick="attack()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 3.5 21 5 10 16H7v-3Z"/><path d="M6 14.5 9.5 18 7 20.5 4.5 18Z"/></svg> こうげき！</button>
-      <button class="btn btn-skill hidden" id="btn-skill" onclick="skillAttack()"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5c.8 3-2.2 4.3-2.2 7a4.3 4.3 0 0 0 8.6 0c0-1.2-.5-2.2-1.1-3.2 1.9 1.4 3 3.6 3 5.9a8.3 8.3 0 1 1-16.6 0C3.7 7.6 9.4 6 12 2.5Z"/></svg> ひっさつ発動！！</button>
+      <button class="btn btn-explore" id="btn-attack" style="display:none" onclick="attack()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 3.5 21 5 10 16H7v-3Z"/><path d="M6 14.5 9.5 18 7 20.5 4.5 18Z"/></svg> こうげき！</button>
+      <button class="btn btn-skill hidden" id="btn-skill" style="display:none" onclick="skillAttack()"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5c.8 3-2.2 4.3-2.2 7a4.3 4.3 0 0 0 8.6 0c0-1.2-.5-2.2-1.1-3.2 1.9 1.4 3 3.6 3 5.9a8.3 8.3 0 1 1-16.6 0C3.7 7.6 9.4 6 12 2.5Z"/></svg> ひっさつ発動！！</button>
+      <button class="btn btn-sub" style="margin-top:8px" id="btn-speed" onclick="toggleBattleSpeed()">⏩ 倍速にする</button>
       <button class="btn btn-sub" style="margin-top:8px" id="btn-flee" onclick="fleeBattle()">にげる</button>
     </div>
     <div class="vs-stamp hidden" id="vs-stamp">VS</div>
@@ -1908,6 +1934,16 @@ const ICONS = {
   speakerOff: I('<path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4Z" fill="currentColor" stroke="none"/><path d="M16 9.5l5.5 5.5M21.5 9.5 16 15"/>'),
 };
 function bigIcon(name, color) { return `<span class="big-ico" style="color:${color || '#e8eef5'}">${ICONS[name]}</span>`; }
+// images/ui-xxx.png が存在すれば画像、なければ従来のSVG/絵文字に自動フォールバック
+const UI_OK = new Set();
+['paw', 'dna'].forEach(nm => {
+  const im = new Image();
+  im.onload = () => { UI_OK.add(nm); if (typeof renderAll === 'function') renderAll(); };
+  im.src = `images/ui-${nm}.png`;
+});
+function uiIco(nm, fallbackHTML, cls) {
+  return UI_OK.has(nm) ? `<img class="${cls || 'ui-ico'}" src="images/ui-${nm}.png" alt="">` : fallbackHTML;
+}
 
 /* フィールドの風景画（images/field-*.jpg があれば画像、なければSVG簡易画） */
 const FIELD_IMG_NAMES = ['field-jungle', 'field-swamp', 'field-volcano', 'field-coast', 'field-island'];
@@ -3860,6 +3896,36 @@ const SUSPENSE = [
   '岩かげをのぞきこむ…',
 ];
 let exploring = false; // 焦らし演出中は連打無効
+function flyToHeader(kind, n) { // 拾った物がカウンターへ吸い込まれていく
+  const from = document.getElementById('stage-art');
+  const tgt = kind === 'dna' ? document.getElementById('nav-dex')
+    : document.getElementById('h-' + (kind === 'coin' ? 'coins' : kind + 's'));
+  if (!from || !tgt) return;
+  const fr = from.getBoundingClientRect(), tr = tgt.getBoundingClientRect();
+  const chip = kind === 'dna' ? tgt : tgt.parentElement;
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => {
+      const useImg = kind !== 'dna' || UI_OK.has('dna');
+      const el = document.createElement(useImg ? 'img' : 'span');
+      el.className = 'fly-ico';
+      if (useImg) el.src = `images/ui-${kind}.png`;
+      else el.textContent = '🧬';
+      const sx = fr.left + fr.width / 2 + rand(-28, 28);
+      const sy = fr.top + fr.height / 2 + rand(-18, 10);
+      el.style.left = sx + 'px';
+      el.style.top = sy + 'px';
+      document.body.appendChild(el);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        el.style.transform = `translate(${(tr.left + tr.width / 2 - sx).toFixed(0)}px, ${(tr.top + tr.height / 2 - sy).toFixed(0)}px) scale(.35)`;
+        el.style.opacity = '0.15';
+      }));
+      setTimeout(() => {
+        el.remove();
+        if (chip) { chip.classList.remove('chip-pop'); void chip.offsetWidth; chip.classList.add('chip-pop'); }
+      }, 600);
+    }, i * 75);
+  }
+}
 function explore() {
   if (exploring) return;
   tickStamina();
@@ -3890,19 +3956,19 @@ function explore() {
     S.coins += c;
     S.stats.coinsEarned += c;
     mProg('coin', c);
-    res = { art: bigIcon('coin', '#ffd24a'), text:`<span class="c-coin">${c}コインを拾った！</span>`, sub:`所持コイン ${S.coins}`, fx:'coin' };
+    res = { art: '<img class="big-item" src="images/ui-coin.png">', text:`<span class="c-coin"><img class="ui-ico" src="images/ui-coin.png"> ${c}コインを拾った！</span>`, sub:`所持コイン ${S.coins}`, fx:'coin' };
   } else if (r < 65) {
     S.keys++;
-    res = { art: bigIcon('key', '#7ec8ff'), text:'<span class="c-key">宝箱の鍵を見つけた！</span>', sub:'ガチャタブで開けてみよう！', badge:'chest', fx:'key' };
+    res = { art: '<img class="big-item" src="images/ui-key.png">', text:'<span class="c-key"><img class="ui-ico" src="images/ui-key.png"> 宝箱の鍵を見つけた！</span>', sub:'ガチャタブで開けてみよう！', badge:'chest', fx:'key' };
   } else if (r < 69) {
     S.tickets++;
-    res = { art: bigIcon('ticket', '#ffb300'), text:'<span class="c-key">ガチャチケットを拾った！</span>', sub:'ガチャタブで回してみよう！', badge:'chest', fx:'ticket', rare:true };
+    res = { art: '<img class="big-item" src="images/ui-ticket.png">', text:'<span class="c-key"><img class="ui-ico" src="images/ui-ticket.png"> ガチャチケットを拾った！</span>', sub:'ガチャタブで回してみよう！', badge:'chest', fx:'ticket', rare:true };
   } else if (r < 74) {
     const c = rand(80, 150);
     S.coins += c;
     S.stats.coinsEarned += c;
     mProg('coin', c);
-    res = { art: bigIcon('coin', '#ffd24a'), text:`<span class="c-rare">お宝ザクザク！<br>${c}コイン獲得！</span>`, sub:`所持コイン ${S.coins}`, rare:true, fx:'coin', fxN:14 };
+    res = { art: '<img class="big-item" src="images/ui-coin.png">', text:`<span class="c-rare">お宝ザクザク！<br><img class="ui-ico" src="images/ui-coin.png"> ${c}コイン獲得！</span>`, sub:`所持コイン ${S.coins}`, rare:true, fx:'coin', fxN:14 };
   } else if (r < 82) {
     // 恐竜ハンター乱入！
     res = {
@@ -3927,13 +3993,18 @@ function explore() {
   renderAll(); // スタミナ・道のりは即反映
   advance3D();
   sfx('step');
-  showStage(bigIcon('paw', '#c3cfdc'), `<span class="c-sys">${pick(SUSPENSE)}<span class="dots"></span></span>`, '');
+  showStage(uiIco('paw', bigIcon('paw', '#c3cfdc'), 'big-item'), `<span class="c-sys">${pick(SUSPENSE)}<span class="dots"></span></span>`, '');
 
   const reveal = () => {
     const finish = () => {
       showStage(res.art, res.text, res.sub, res.rare);
       if (res.badge) document.getElementById('badge-' + res.badge).classList.remove('hidden');
       playResultFx(res);
+      // 拾った物がカウンターへ飛んでいく
+      if (res.fx === 'coin') flyToHeader('coin', res.fxN ? 10 : 6);
+      else if (res.fx === 'key') flyToHeader('key', 2);
+      else if (res.fx === 'ticket') flyToHeader('ticket', 2);
+      if (res.pct) flyToHeader('dna', 4);
       exploring = false;
       flushToasts();
       renderAll();
@@ -3988,6 +4059,7 @@ function startBattle(opp) {
     line: 50, // 押し相撲の戦線（50=中央、高いほど敵を押し込んでいる）
     intro: true, // 開幕演出中は操作不可
     busy: false,
+    spd: 1, nextAt: 0, // オート進行（本家準拠）と倍速
   };
   // 3Dフィールドを戦場の背景にする（探索タブに切り替えてUIだけ隠す）
   if (!document.body.classList.contains('explore-mode')) switchTab('explore');
@@ -4004,6 +4076,7 @@ function startBattle(opp) {
   document.getElementById('b-log').textContent = `チームパワー ${effTeamPower(opp.dtype, opp.terrain)} でたたかえ！`;
   document.getElementById('btn-attack').disabled = false;
   document.getElementById('btn-flee').textContent = opp.type === 'hunter' ? 'にげる（少し奪われる）' : 'にげる';
+  document.getElementById('btn-speed').textContent = '⏩ 倍速にする';
   document.getElementById('battle-modal').classList.remove('hidden');
   renderBattleTeam();
   renderBattle();
@@ -4027,7 +4100,12 @@ function startBattle(opp) {
     vs.classList.add('hidden');
     document.getElementById('b-appear').classList.add('hidden');
     document.getElementById('b-tamer').classList.add('hidden');
-    if (battle) { battle.intro = false; document.getElementById('btn-attack').disabled = false; }
+    if (battle) {
+      battle.intro = false;
+      battle.nextAt = Date.now() + (battle.opp.terrain ? 900 : 300);
+      if (battle.opp.terrain) battleBanner('地形効果発動！', 'rgba(20,110,200,.92)');
+      autoBattleLoop(); // ここからは全自動（本家準拠）
+    }
   }, 1000);
 }
 function openBossBattle() {
@@ -4163,6 +4241,38 @@ function bfAnim(el, cls) {
   setTimeout(() => el.classList.remove(cls), 380);
 }
 // 突撃：el が target の手前まで実際に移動して押し込む（着弾は約200ms後）
+let _autoBT = 0;
+function toggleBattleSpeed() {
+  if (!battle) return;
+  battle.spd = battle.spd === 2 ? 1 : 2;
+  document.getElementById('btn-speed').textContent = battle.spd === 2 ? '⏩ 倍速中（タップで等速）' : '⏩ 倍速にする';
+}
+function battleBanner(text, rgba) {
+  const bn = document.createElement('div');
+  bn.className = 'b-banner';
+  const c = rgba || 'rgba(200,40,20,.9)';
+  bn.style.background = `linear-gradient(90deg, transparent, ${c} 15%, ${c} 85%, transparent)`;
+  bn.textContent = text;
+  const box = document.getElementById('battle-box');
+  if (box) box.appendChild(bn);
+  setTimeout(() => bn.remove(), 1400);
+}
+function autoBattleLoop() { // 本家準拠：バトルは全自動で進む（倍速ボタンのみ操作）
+  if (!battle || battle.finishing) return;
+  clearTimeout(_autoBT);
+  _autoBT = setTimeout(autoBattleLoop, 180);
+  if (battle.intro || battle.busy || skillBusy) return;
+  if (Date.now() < (battle.nextAt || 0)) return;
+  const lu = battle.units && battle.units[0];
+  if (battle.gauge >= 100 && lu && lu.hp > 0) { // ゲージが溜まったらスキル自動発動
+    battle.nextAt = Date.now() + 1500 / (battle.spd || 1);
+    battleBanner(`スキル発動「${SKILL_NAMES[DINO_MAP[teamIds()[0]].type]}」！`, 'rgba(220,120,10,.92)');
+    skillAttack();
+  } else {
+    battle.nextAt = Date.now() + 400;
+    attack();
+  }
+}
 function pushLine(d) { // 押し相撲の戦線：ダメージの応酬でせり合いが動く
   if (!battle) return;
   battle.line = Math.max(5, Math.min(95, (battle.line === undefined ? 50 : battle.line) + d));
@@ -4179,9 +4289,9 @@ function pushLine(d) { // 押し相撲の戦線：ダメージの応酬でせり
   // 押せば敵は後退して小さく、押されると敵が迫ってくる
   const t = (L - 50) / 50;
   const boss = document.getElementById('boss-push');
-  if (boss) boss.style.transform = `translateY(${(-t * 13).toFixed(1)}px) scale(${(1 - t * 0.17).toFixed(3)})`;
+  if (boss) boss.style.transform = `translateY(${(-t * 34).toFixed(1)}px) scale(${(1 - t * 0.24).toFixed(3)})`;
   const team = document.getElementById('b-team');
-  if (team) team.style.transform = `translateY(${(-t * 5).toFixed(1)}px) scale(${(1 + t * 0.03).toFixed(3)})`;
+  if (team) team.style.transform = `translateY(${(t * -16).toFixed(1)}px) scale(${(1 + t * 0.05).toFixed(3)})`;
 }
 function chargeTo(el, target, ratio) {
   if (!el || !target) return;
@@ -4353,7 +4463,7 @@ function enemyTurn() {
     renderBattle();
     if (battle.units.every(u => u.hp <= 0)) { loseBattle(); return; }
     battle.busy = false;
-    document.getElementById('btn-attack').disabled = false;
+    battle.nextAt = Date.now() + 850 / (battle.spd || 1);
   }, 200);
 }
 const SKILL_NAMES = { meat: 'デス・クラッシュ', plant: 'グランド・クエイク', aqua: 'メガ・ウェーブ' };
@@ -5748,10 +5858,10 @@ function updateExploreBtn() {
   exBtn.classList.toggle('hidden', bossReady);
   exBtn.disabled = exploring || S.stamina < STAMINA_COST;
   exBtn.innerHTML = exploring
-    ? `${ICONS.paw}<span>探索中…</span>`
+    ? `${uiIco('paw', ICONS.paw)}<span>探索中…</span>`
     : S.stamina < STAMINA_COST
       ? `${ICONS.moon}<span>回復待ち</span>`
-      : `${ICONS.paw}<span>進む</span><b class="fab-cost">-5</b>`;
+      : `${uiIco('paw', ICONS.paw)}<span>進む</span><b class="fab-cost">-5</b>`;
   if (bossReady) {
     document.getElementById('btn-boss').innerHTML = `${ICONS.skull}<span>挑む！</span>`;
   }
