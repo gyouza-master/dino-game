@@ -2827,12 +2827,13 @@ function billboardMat(n) {
   }
   return _bbMats[n];
 }
+const BB_SCALE = { ribs1: 0.55, driftwood1: 0.75, deadtree1: 0.85 }; // 骨・流木・枯れ木は木より小ぶりに
 function makeBillboardPlant(names, hMin, hMax) {
   const avail = names.filter(n => _treeTex[n]);
   const n = pick(avail);
   const t = _treeTex[n];
   const g = new THREE.Group();
-  const h = hMin + Math.random() * (hMax - hMin);
+  const h = (hMin + Math.random() * (hMax - hMin)) * (BB_SCALE[n] || 1);
   const w = h * (t.image.width / t.image.height);
   const geo = GEO('bbplane', () => new THREE.PlaneGeometry(1, 1));
   for (let i = 0; i < 2; i++) { // 2枚を十字に交差させる
@@ -3298,8 +3299,8 @@ function build3DWorld(ai) {
   const hasUnderTex = bbU.length > 0;
   const treeCount = hasTreeTex ? Math.round(cfg.count * 1.35) : cfg.count; // 画像の木があるなら密林化
   for (let i = 0; i < treeCount; i++) {
-    const obj = hasTreeTex && Math.random() < 0.72
-      ? makeBillboardPlant(bbT, 5.5, 10.5)   // そのフィールドの切り抜き植生
+    const obj = hasTreeTex
+      ? makeBillboardPlant(bbT, 5.5, 10.5)   // そのフィールドの切り抜き植生（ローポリ木は混ぜない）
       : (cfg.obj === 'tree' ? makeTree(cfg) : makeRock(cfg));
     scatter(obj, T3.camZ, Math.random() < 0.3); // 3割は道の近くに寄せて圧を出す
     T3.trees.push(obj);
@@ -3331,7 +3332,7 @@ function build3DWorld(ai) {
   // 下草や小物を散らして地面を埋める
   const propCount = hasUnderTex ? Math.round((cfg.props || 0) * 1.6) : (cfg.props || 0);
   for (let i = 0; i < propCount; i++) {
-    const p = hasUnderTex && Math.random() < 0.72
+    const p = hasUnderTex
       ? makeBillboardPlant(bbU, 1.0, 2.2)
       : makeProp(cfg);
     scatter(p, T3.camZ, true);
@@ -3353,11 +3354,11 @@ function build3DWorld(ai) {
   }
   // ジャングル専用：林冠を作る巨木（ツル付き）
   if (cfg.jungle) {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) { // ローポリ巨木は少数を道から離して霧に溶かす
       const gt = makeGiantTree(cfg);
       const side = i % 2 ? -1 : 1;
-      gt.position.x = side * (5.5 + Math.random() * 8.5);
-      gt.position.z = T3.camZ - 6 - Math.random() * WORLD_DEPTH;
+      gt.position.x = side * (10 + Math.random() * 7);
+      gt.position.z = T3.camZ - 14 - Math.random() * WORLD_DEPTH;
       T3.trees.push(gt);
       group.add(gt);
     }
