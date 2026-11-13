@@ -898,6 +898,19 @@
     box-shadow: 0 4px 0 #0d4668, 0 8px 18px rgba(0,0,0,.45); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
   .btn-cap:active { transform: translateY(3px); box-shadow: 0 1px 0 #0d4668; }
 
+  /* ===== 画面の上を流れる霧レイヤー ===== */
+  .fogbank {
+    position: absolute; top: 0; bottom: 0; left: -100%; width: 300%;
+    pointer-events: none; z-index: 1; opacity: 0;
+    background-repeat: repeat-x; background-size: 50% 100%;
+    mix-blend-mode: screen; transition: opacity 1.2s;
+    will-change: transform;
+  }
+  #fog-a { animation: fogDriftA 46s linear infinite; }
+  #fog-b { animation: fogDriftB 71s linear infinite; }
+  @keyframes fogDriftA { from { transform: translateX(0); } to { transform: translateX(33.333%); } }
+  @keyframes fogDriftB { from { transform: translateX(0); } to { transform: translateX(-33.333%); } }
+
   /* ===== ガチャ演出（フルスクリーン） ===== */
   #gacha-fx {
     position: fixed; inset: 0; z-index: 90; overflow: hidden;
@@ -1552,6 +1565,8 @@
 
         <div class="scene" id="scene">
           <canvas id="scene3d"></canvas>
+          <div class="fogbank" id="fog-a"></div>
+          <div class="fogbank" id="fog-b"></div>
           <div class="stage-content" id="stage">
             <div class="stage-art" id="stage-art">🌴</div>
             <div class="stage-text" id="stage-text">奥へ進んで<br>恐竜のDNAを探そう！</div>
@@ -2439,7 +2454,7 @@ function stealFromPlayer(lo, hi) {
 // フィールドごとの3D配色（空＝フォグ・地面・木の葉・幹）
 const FIELD_3D = [
   { fog:0x081a0b, ground:0x0e2f16, ground2:0x1a4a22, obj:'tree', leaf:0x1e5c2a, leaf2:0x2e7d32, leaf3:0x14532d, trunk:0x3a2a18, count:44, props:110, fogFar:62, mote:0xffdf8a,
-    tex:'jungle', texTint:0x8da687, jungle:1, leaves:0x58c24a, birds:1, rays:1, mist:1, flies:1, grass:1, walls:1,
+    tex:'jungle', texTint:0x8da687, jungle:1, leaves:0x58c24a, birds:1, rays:1, mist:1, grass:1, walls:1,
     bbTrees:['tree1','tree2','tree3'], bbUnder:['fern1','bush1'],
     models:[{slug:'island_tree_01', count:3, scale:1.1, near:1}, {slug:'fern_02', count:10, scale:1.3}] },
   { fog:0x141e1c, ground:0x13241e, ground2:0x1e3a30, obj:'tree', leaf:0x2a4a3a, leaf2:0x38685a, leaf3:0x1d332a, trunk:0x2f3338, count:32, props:60, fogFar:42, mote:0xbfe8d8, mist:1, tex:'swamp', texTint:0x90a090, walls:1, bbTrees:['deadtree1'], bbUnder:['reeds1'],
@@ -3155,25 +3170,40 @@ function makeMist() {
   return sp;
 }
 let _grassMat = null;
+function windifyGrass(mat) { // 草専用：1本ずつ別位相でかすかに揺れる（instanceMatrixから位相を取る）
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uWindT = WIND_UNI;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uWindT;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
+        '#ifdef USE_INSTANCING\n' +
+        'float iph_ = instanceMatrix[3][0] * 1.7 + instanceMatrix[3][2] * 1.1;\n' +
+        '#else\nfloat iph_ = 0.0;\n#endif\n' +
+        'float sway_ = sin(uWindT * 1.5 + iph_) + 0.4 * sin(uWindT * 3.1 + iph_ * 1.7);\n' +
+        'transformed.x += sway_ * (0.09 * max(position.y, 0.0));');
+  };
+  mat.customProgramCacheKey = () => 'windgrass';
+  return mat;
+}
 function makeGrassChunk(cfg) {
-  // 地面を埋める草（GPUインスタンシングで1400本を1描画）
+  // 地面を埋める草（GPUインスタンシング・平たい葉を暗めに）
   const N = 1400;
-  const geo = GEO('grassBlade', () => { const g = new THREE.ConeGeometry(0.05, 0.6, 4); g.translate(0, 0.3, 0); return g; });
-  if (!_grassMat) _grassMat = windify(new THREE.MeshLambertMaterial({ color: 0xffffff }), '0.33 * max(position.y, 0.0)');
+  const geo = GEO('grassBlade', () => { const g = new THREE.ConeGeometry(0.05, 0.45, 4); g.translate(0, 0.225, 0); g.scale(1, 1, 0.22); return g; });
+  if (!_grassMat) _grassMat = windifyGrass(new THREE.MeshLambertMaterial({ color: 0xffffff }));
   const m = new THREE.InstancedMesh(geo, _grassMat, N);
   const o = new THREE.Object3D();
   const col = new THREE.Color();
   const shades = [cfg.leaf, cfg.leaf2, cfg.leaf3];
   for (let i = 0; i < N; i++) {
     const side = Math.random() < 0.5 ? -1 : 1;
-    o.position.set(side * (2.5 + Math.random() * 14), 0, -Math.random() * WORLD_DEPTH);
+    o.position.set(side * (3.2 + Math.random() * 13), 0, -Math.random() * WORLD_DEPTH);
     o.rotation.y = Math.random() * Math.PI;
-    const s = 0.7 + Math.random() * 1.3;
-    o.scale.set(s, s * (0.7 + Math.random() * 0.9), s);
+    const s = 0.55 + Math.random() * 0.8;
+    o.scale.set(s, s * (0.6 + Math.random() * 0.7), s);
     o.updateMatrix();
     m.setMatrixAt(i, o.matrix);
     col.setHex(pick(shades)).convertSRGBToLinear();
-    col.multiplyScalar(0.75 + Math.random() * 0.5);
+    col.multiplyScalar(0.4 + Math.random() * 0.35); // 地面に馴染む暗さ
     m.setColorAt(i, col);
   }
   m.frustumCulled = false;
@@ -3751,10 +3781,51 @@ function loop3D() {
   else T3.renderer.render(T3.scn, T3.cam);
 }
 
+let _fogURL = null;
+function fogTex() { // もやもやの霧タイル（横リピート可能）
+  if (_fogURL) return _fogURL;
+  const W = 512, H = 256;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  for (let i = 0; i < 26; i++) {
+    const px = Math.random() * W, py = H * 0.25 + Math.random() * H * 0.75;
+    const r = 40 + Math.random() * 90;
+    const g = x.createRadialGradient(px, py, r * 0.1, px, py, r);
+    const a = 0.05 + Math.random() * 0.08;
+    g.addColorStop(0, `rgba(255,255,255,${a})`);
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g;
+    // 横シームレスにするため左右にもコピー描画
+    [px - W, px, px + W].forEach(cx2 => { x.save(); x.translate(cx2 - px, 0); x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); x.restore(); });
+  }
+  _fogURL = c.toDataURL();
+  return _fogURL;
+}
+const FOG_CFG = [ // フィールド別：[不透明度, 色調フィルタ]
+  [0.22, 'none'],                           // ジャングル：うっすら
+  [0.5, 'none'],                            // 湿地：濃い霧
+  [0.18, 'sepia(1) saturate(3) hue-rotate(-28deg)'], // 火山：赤茶の熱気
+  [0.3, 'none'],                            // 海岸：潮のもや
+  [0.34, 'sepia(1) saturate(2.4) hue-rotate(215deg)'], // 孤島：紫の瘴気
+];
+function applyFog(ai) {
+  const a = document.getElementById('fog-a'), b = document.getElementById('fog-b');
+  if (!a || !b) return;
+  if (!a.style.backgroundImage) {
+    a.style.backgroundImage = `url(${fogTex()})`;
+    b.style.backgroundImage = `url(${fogTex()})`;
+  }
+  const [op, filt] = FOG_CFG[ai] || [0.25, 'none'];
+  a.style.opacity = op;
+  b.style.opacity = op * 0.7;
+  a.style.filter = filt;
+  b.style.filter = filt;
+}
 function setupScenery() {
   if (worldArea === S.areaIdx) return;
   worldArea = S.areaIdx;
   document.getElementById('scene').style.background = AREAS[S.areaIdx].scenery.bg;
+  applyFog(S.areaIdx);
   build3DWorld(S.areaIdx);
 }
 
