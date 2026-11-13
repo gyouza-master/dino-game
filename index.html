@@ -651,6 +651,31 @@
     background: radial-gradient(ellipse 90% 60% at 50% 110%, rgba(0,0,0,.25), transparent 60%);
   }
   .bf-vs { text-align: center; color: #ffb300; font-weight: 900; font-size: 11px; letter-spacing: .35em; margin: 4px 0 6px; text-shadow: 0 0 8px rgba(255,179,0,.5); }
+  /* ===== 押し相撲の戦線（綱引きゲージ） ===== */
+  .boss-push { transition: transform .5s cubic-bezier(.3,1.1,.4,1); will-change: transform; }
+  .bf-team { transition: transform .5s cubic-bezier(.3,1.1,.4,1); }
+  .bf-line { position: relative; height: 20px; margin: 3px 4px 6px; }
+  .bfl-bar {
+    position: absolute; left: 0; right: 0; top: 50%; height: 10px; transform: translateY(-50%);
+    border-radius: 999px; overflow: hidden;
+    background: linear-gradient(180deg, #541612, #2c0e0a);
+    border: 1px solid #6a3a30; box-shadow: inset 0 2px 4px rgba(0,0,0,.65);
+  }
+  .bfl-ours {
+    height: 100%; background: linear-gradient(180deg, #4ade80, #15803d);
+    box-shadow: 2px 0 10px rgba(74,222,128,.85);
+    transition: width .45s cubic-bezier(.3,1.2,.4,1);
+  }
+  .bfl-clash {
+    position: absolute; top: 50%; font-size: 15px; z-index: 1; pointer-events: none;
+    transition: left .45s cubic-bezier(.3,1.2,.4,1);
+    filter: drop-shadow(0 0 7px rgba(255,210,74,.95));
+    animation: clashShake .36s infinite;
+  }
+  @keyframes clashShake { 0%, 100% { transform: translate(-50%,-50%) rotate(-10deg); } 50% { transform: translate(-50%,-50%) rotate(10deg); } }
+  .bf-line.push .bfl-clash { animation-duration: .16s; }
+  .bf-line.push .bfl-ours { filter: brightness(1.25); }
+  .bf-line.pinch .bfl-bar { border-color: #ff5a3c; box-shadow: inset 0 2px 4px rgba(0,0,0,.65), 0 0 12px rgba(255,61,0,.5); }
   .bf-team { display: flex; justify-content: center; gap: 5px; }
   .bf-member {
     width: 19%; max-width: 66px; aspect-ratio: 1 / 1; position: relative;
@@ -1624,8 +1649,11 @@
     <div class="modal" id="battle-box">
       <div class="boss-title" id="b-boss-name"></div>
       <div class="battlefield">
-        <div class="boss-art" id="b-boss-art"></div>
-        <div class="bf-vs">― VS ―</div>
+        <div class="boss-push" id="boss-push"><div class="boss-art" id="b-boss-art"></div></div>
+        <div class="bf-line" id="bf-line">
+          <div class="bfl-bar"><div class="bfl-ours" id="bfl-ours" style="width:50%"></div></div>
+          <div class="bfl-clash" id="bfl-clash" style="left:50%">⚔️</div>
+        </div>
         <div class="bf-team" id="b-team"></div>
       </div>
       <div class="small" id="b-type" style="margin-bottom:6px"></div>
@@ -3843,6 +3871,7 @@ function startBattle(opp) {
     hp: ehp, hpMax: ehp,
     units, php: phpMax, phpMax,
     gauge: 0,
+    line: 50, // 押し相撲の戦線（50=中央、高いほど敵を押し込んでいる）
     intro: true, // 開幕演出中は操作不可
     busy: false,
   };
@@ -3864,6 +3893,7 @@ function startBattle(opp) {
   document.getElementById('battle-modal').classList.remove('hidden');
   renderBattleTeam();
   renderBattle();
+  pushLine(0); // 戦線を中央に戻す
   // ===== 開幕演出：敵が降り立ち、チームがせり上がり、VS！ =====
   const box = document.getElementById('battle-box');
   const vs = document.getElementById('vs-stamp');
@@ -4012,6 +4042,26 @@ function bfAnim(el, cls) {
   setTimeout(() => el.classList.remove(cls), 380);
 }
 // 突撃：el が target の手前まで実際に移動して押し込む（着弾は約200ms後）
+function pushLine(d) { // 押し相撲の戦線：ダメージの応酬でせり合いが動く
+  if (!battle) return;
+  battle.line = Math.max(5, Math.min(95, (battle.line === undefined ? 50 : battle.line) + d));
+  const L = battle.line;
+  const ours = document.getElementById('bfl-ours');
+  const clash = document.getElementById('bfl-clash');
+  const lineEl = document.getElementById('bf-line');
+  if (ours) ours.style.width = L + '%';
+  if (clash) clash.style.left = L + '%';
+  if (lineEl) {
+    lineEl.classList.toggle('push', L >= 78);
+    lineEl.classList.toggle('pinch', L <= 22);
+  }
+  // 押せば敵は後退して小さく、押されると敵が迫ってくる
+  const t = (L - 50) / 50;
+  const boss = document.getElementById('boss-push');
+  if (boss) boss.style.transform = `translateY(${(-t * 13).toFixed(1)}px) scale(${(1 - t * 0.17).toFixed(3)})`;
+  const team = document.getElementById('b-team');
+  if (team) team.style.transform = `translateY(${(-t * 5).toFixed(1)}px) scale(${(1 + t * 0.03).toFixed(3)})`;
+}
 function chargeTo(el, target, ratio) {
   if (!el || !target) return;
   const a = el.getBoundingClientRect(), b = target.getBoundingClientRect();
@@ -4087,6 +4137,7 @@ function dmgPop(dmg, big, anchorEl) {
 }
 function finishWin() {
   if (battle) battle.finishing = true;
+  pushLine(60); // 最後は一気に押し切る
   sfx('win');
   flameBurst(document.getElementById('b-boss-art'), 210);
   const fx = document.getElementById('finish-fx');
@@ -4119,6 +4170,7 @@ function attack() {
         const crit = Math.random() < 0.1;
         const dmg = Math.max(1, Math.round(effUnitPow(u, battle.opp) * (0.85 + Math.random() * 0.3) * (crit ? 1.8 : 1)));
         battle.hp -= dmg; total += dmg; done++;
+        pushLine(dmg / battle.hpMax * 58); // 一撃ごとに戦線を押し込む
         if (crit) anyCrit = true;
         battle.gauge = Math.min(100, battle.gauge + rand(4, 7));
         sfx(crit ? 'crit' : 'hit');
@@ -4166,6 +4218,7 @@ function enemyTurn() {
     const crit = Math.random() < 0.1;
     const dmg = Math.max(1, Math.round(battle.opp.atk * 3.2 * (0.85 + Math.random() * 0.3) * (crit ? 1.5 : 1)));
     target.hp -= dmg;
+    pushLine(-(dmg / battle.phpMax) * 130); // 反撃で押し返される
     sfx('hit');
     bfAnim(tEl, 'bf-hit');
     clawFx(tEl, '#ff6a6a', crit);
@@ -4212,6 +4265,7 @@ function skillAttack() {
     chargeTo(memberEl(leader), document.getElementById('b-boss-art'), 0.85); // リーダーが突撃して叩き込む
     clawFx(document.getElementById('b-boss-art'), CLAW_COLOR[ld.type], true);
     battle.hp -= dmg;
+    pushLine(dmg / battle.hpMax * 80); // ひっさつで一気に押し込む
     skillVfx(DINO_MAP[teamIds()[0]].type); // リーダーのタイプで3D演出
     dmgPop(dmg, true);
     flameBurst(document.getElementById('b-boss-art'), 190);
