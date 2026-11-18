@@ -266,9 +266,11 @@
   }
   .stage-sub { font-size: 11px; color: #aebdd0; margin-top: 2px; }
   .stage-content.bang > * { animation: bang .35s; }
-  @keyframes bang {
+  @keyframes bang { /* バウンスして着地→わずかに潰れて戻る */
     0% { transform: scale(.3); opacity: 0; }
-    60% { transform: scale(1.15); opacity: 1; }
+    55% { transform: scale(1.16); opacity: 1; }
+    72% { transform: scale(.94, 1.04); }
+    86% { transform: scale(1.04, .97); }
     100% { transform: scale(1); }
   }
   .stage-content.mega > * { animation: megabang .5s; }
@@ -675,10 +677,11 @@
     width: min(76vw, 400px); filter: drop-shadow(0 18px 40px rgba(0,0,0,.75));
     animation: emblemSlam .55s cubic-bezier(.2, 1.25, .4, 1);
   }
-  @keyframes emblemSlam {
+  @keyframes emblemSlam { /* 叩きつけ→インパクトでスカッシュ→セトル */
     0% { transform: scale(3) rotate(-7deg); opacity: 0; }
-    55% { transform: scale(.95) rotate(1deg); opacity: 1; }
-    75% { transform: scale(1.05); }
+    50% { transform: scale(.93) rotate(1deg); opacity: 1; }
+    66% { transform: scale(1.18, .88) rotate(0deg); }
+    82% { transform: scale(.96, 1.06); }
     100% { transform: scale(1); }
   }
 
@@ -926,9 +929,11 @@
     box-shadow: 0 0 16px rgba(45,159,212,.35), 0 6px 16px rgba(0,0,0,.5);
     text-shadow: 0 2px 4px #000; opacity: 0; }
   .cap-plate.on { animation: capStamp .3s cubic-bezier(.25,1.5,.4,1) forwards; }
-  @keyframes capStamp { /* スタンプがガシャンと押される */
+  @keyframes capStamp { /* スタンプがガシャン→潰れて戻る */
     0% { opacity: 0; transform: scale(2.6) rotate(-10deg); }
-    55% { opacity: 1; transform: scale(.94) rotate(-2deg); }
+    50% { opacity: 1; transform: scale(.92) rotate(-2deg); }
+    68% { opacity: 1; transform: scale(1.12, .9) rotate(-2deg); }
+    84% { opacity: 1; transform: scale(.97, 1.04) rotate(-2deg); }
     100% { opacity: 1; transform: scale(1) rotate(-2deg); } }
   .cap-sub, #capture-fx .btn-cap { opacity: 0; }
   #capture-fx.stamped .cap-sub, #capture-fx.stamped .btn-cap { animation: capFadeUp .4s .12s forwards; }
@@ -964,7 +969,7 @@
     filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
   }
   .chip-pop { animation: chipPop .32s; }
-  @keyframes chipPop { 40% { transform: scale(1.3); } }
+  @keyframes chipPop { 35% { transform: scale(1.35); } 65% { transform: scale(.92); } }
   .big-item { height: 76px; filter: drop-shadow(0 6px 12px rgba(0,0,0,.55)); }
 
   /* ===== 生成アセット（通貨アイコン・宝箱・テイマー） ===== */
@@ -1009,7 +1014,7 @@
   .gfx-flash.on { animation: gfxFlash .45s ease-out; }
   @keyframes gfxFlash { 0% { opacity: 0; } 15% { opacity: .95; } 100% { opacity: 0; } }
   .gfx-hint { position: relative; z-index: 2; margin-top: 28px; min-height: 20px; font-weight: 900; color: #ffd24a; font-size: 15px; text-shadow: 0 2px 6px #000; letter-spacing: .08em; }
-  .gfx-reveal { position: relative; z-index: 2; text-align: center; padding: 0 20px; animation: cardFly .5s cubic-bezier(.2, .85, .3, 1.08); }
+  .gfx-reveal { position: relative; z-index: 2; text-align: center; padding: 0 20px; animation: cardFly .48s cubic-bezier(.175, .885, .32, 1.2); }
   .gfx-rarity { display: inline-block; font-weight: 900; font-size: 15px; padding: 4px 18px; border-radius: 999px; color: #0b0f16; margin-bottom: 10px; }
   .gfx-art { height: 190px; display: flex; align-items: center; justify-content: center; }
   .gfx-art img { max-height: 190px; filter: drop-shadow(0 10px 24px rgba(0,0,0,.6)); }
@@ -1305,11 +1310,12 @@
   /* 突撃：相手の陣地まで実際に押し込む（移動量はJSが --chx/--chy で渡す） */
   /* SR/SSRのオーラやリーダーの炎（同特異度）より後に置き、突撃中は突撃アニメを優先させる */
   .bf-member.bf-charge, #b-boss-art.bf-charge { animation: bfCharge .58s cubic-bezier(.32,.68,.36,1); }
-  @keyframes bfCharge {
+  @keyframes bfCharge { /* タメ（予備動作）→突進→押し込み→戻る */
     0% { transform: none; }
-    30% { transform: translate(var(--chx, 0px), var(--chy, -140px)) scale(1.3); }
-    38% { transform: translate(calc(var(--chx, 0px) * 1.06), calc(var(--chy, -140px) * 1.06)) scale(1.33); }
-    56% { transform: translate(var(--chx, 0px), var(--chy, -140px)) scale(1.25); }
+    14% { transform: translate(calc(var(--chx, 0px) * -0.12), calc(var(--chy, -140px) * -0.12)) scale(.94); }
+    36% { transform: translate(var(--chx, 0px), var(--chy, -140px)) scale(1.3); }
+    44% { transform: translate(calc(var(--chx, 0px) * 1.06), calc(var(--chy, -140px) * 1.06)) scale(1.34); }
+    58% { transform: translate(var(--chx, 0px), var(--chy, -140px)) scale(1.25); }
     100% { transform: none; }
   }
 
@@ -2286,8 +2292,93 @@ function noiseBurst(dur, vol, delay) {
   src.connect(f); f.connect(g); g.connect(ctx.destination);
   src.start(t0);
 }
+/* ========== 実音源（sounds/*.m4a があれば合成音より優先） ========== */
+const SND_SRC = { roar: 'roar', growlFar: 'growl-far' }; // 効果音 → ファイル名
+const AMB_SRC = { 4: 'amb-storm' };                       // フィールド → 環境音ループ（禁断の孤島=亡霊の嵐）
+const SND_FAIL = new Set();
+function playRealSnd(name) {
+  const f = SND_SRC[name];
+  if (!f || SND_FAIL.has(f)) return false;
+  try {
+    const a = new Audio(`sounds/${f}.m4a`);
+    a.volume = name === 'roar' ? 0.85 : name === 'growlFar' ? 0.5 : 0.7;
+    a.onerror = () => SND_FAIL.add(f); // ファイルが無ければ以後は合成音に
+    a.play().catch(() => {});
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ========== BGM（WebAudio作曲エンジン・権利フリー） ========== */
+let BGM = null;
+const BGM_DEFS = {
+  field:  { bpm: 92, vol: 0.045,
+            bass: [0, null, 7, null, 5, null, 3, null, 0, null, 7, null, 8, 7, 5, 3],
+            arp: [12, 15, 19, 24, 19, 15], arpEvery: 2, kick: [0, 8], hat: [4, 12] },
+  battle: { bpm: 138, vol: 0.06,
+            bass: [0, 0, null, 0, 3, 3, null, 3, 5, 5, null, 5, 3, 3, 7, 7],
+            arp: [12, 13, 15, 19], arpEvery: 1, kick: [0, 4, 8, 12], hat: [2, 6, 10, 14] },
+};
+const BGM_ROOT = 110; // A2
+function bgmNote(semi) { return BGM_ROOT * Math.pow(2, semi / 12); }
+function startBgm(mode) {
+  if (!S || S.muted) { stopBgm(); return; }
+  if (BGM && BGM.mode === mode) return;
+  stopBgm();
+  const ctx = audioCtx(); if (!ctx) return;
+  const def = BGM_DEFS[mode]; if (!def) return;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(def.vol, ctx.currentTime + 2);
+  gain.connect(ctx.destination);
+  BGM = { mode, gain, step: 0, timer: 0 };
+  const stepDur = 60 / def.bpm / 2; // 8分音符
+  BGM.timer = setInterval(() => {
+    if (!BGM) return;
+    const t = ctx.currentTime, i = BGM.step % 16;
+    const b = def.bass[i];
+    if (b !== null) { // ベース
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = bgmNote(b);
+      g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.001, t + stepDur * 1.8);
+      o.connect(g); g.connect(BGM.gain); o.start(t); o.stop(t + stepDur * 2);
+    }
+    if (i % def.arpEvery === 0) { // きらめきのアルペジオ
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = bgmNote(def.arp[((BGM.step / def.arpEvery) | 0) % def.arp.length]);
+      g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + stepDur * 1.2);
+      o.connect(g); g.connect(BGM.gain); o.start(t); o.stop(t + stepDur * 1.5);
+    }
+    if (def.kick.includes(i)) { // キック
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+      g.gain.setValueAtTime(1.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      o.connect(g); g.connect(BGM.gain); o.start(t); o.stop(t + 0.2);
+    }
+    if (def.hat.includes(i)) { // ハイハット
+      const bu = ctx.createBuffer(1, 1200, ctx.sampleRate);
+      const da = bu.getChannelData(0);
+      for (let k = 0; k < da.length; k++) da[k] = (Math.random() * 2 - 1) * (1 - k / da.length);
+      const src = ctx.createBufferSource(); src.buffer = bu;
+      const f2 = ctx.createBiquadFilter(); f2.type = 'highpass'; f2.frequency.value = 6000;
+      const g = ctx.createGain(); g.gain.value = 0.22;
+      src.connect(f2); f2.connect(g); g.connect(BGM.gain); src.start(t);
+    }
+    BGM.step++;
+  }, stepDur * 1000);
+}
+function stopBgm() {
+  if (!BGM) return;
+  clearInterval(BGM.timer);
+  const old = BGM; BGM = null;
+  try { old.gain.gain.linearRampToValueAtTime(0.0001, audioCtx().currentTime + 0.6); } catch (e) {}
+  setTimeout(() => { try { old.gain.disconnect(); } catch (e) {} }, 800);
+}
+
 function sfx(name) {
   if (!S || S.muted) return;
+  if (playRealSnd(name)) return; // 実音源があればそちらを再生
   switch (name) {
     case 'step':    noiseBurst(0.07, 0.05); break;
     case 'dna':     tone(660, .09, { type:'sine', vol:.1 }); tone(990, .14, { type:'sine', vol:.1, delay:.08 }); break;
@@ -2315,7 +2406,8 @@ function toggleMute() {
   save();
   document.getElementById('btn-mute').innerHTML = S.muted ? ICONS.speakerOff : ICONS.speaker;
   if (!S.muted) sfx('ticket');
-  startAmbience(); // ミュート切替で環境音も止める/再開する
+  if (S.muted) stopBgm();
+  startAmbience(); // ミュート切替で環境音・BGMも止める/再開する
 }
 
 /* ========== 環境音（フィールドごとに生成するアンビエンス・素材ファイルなし） ========== */
@@ -2355,9 +2447,10 @@ function ambDrip() { ambTone(900 + Math.random() * 500, 0.18, 'sine', 0.05, -500
 function ambRumble() { ambTone(44, 2.4, 'sawtooth', 0.05, -12); }
 function ambHowl() { ambTone(300 + Math.random() * 120, 1.5, 'sine', 0.03, -140); }
 function startAmbience() {
-  if (!S || S.muted) { stopAmbience(); return; }
+  if (!S || S.muted) { stopAmbience(); stopBgm(); return; }
   const want = document.body.classList.contains('explore-mode') ? S.areaIdx : -1;
-  if (want < 0) { stopAmbience(); return; }
+  if (want < 0) { stopAmbience(); stopBgm(); return; }
+  if (!battle) startBgm('field'); // 探索中はBGMも流す
   if (AMB && AMB.area === want) return;
   stopAmbience();
   const ctx = audioCtx(); if (!ctx) return;
@@ -2366,6 +2459,14 @@ function startAmbience() {
   gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 1.8);
   gain.connect(ctx.destination);
   AMB = { area: want, gain, nodes: [gain], timers: [] };
+  // 実録音の環境音ループがあるフィールドはそれを重ねる
+  const realAmb = AMB_SRC[want];
+  if (realAmb) {
+    const ra = new Audio(`sounds/${realAmb}.m4a`);
+    ra.loop = true; ra.volume = 0.45;
+    ra.play().catch(() => {});
+    AMB.nodes.push({ stop: () => { try { ra.pause(); } catch (e) {} } });
+  }
   // 風のベース：ブラウンノイズ＋ローパス
   const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   const data = buf.getChannelData(0);
@@ -2377,10 +2478,12 @@ function startAmbience() {
   src.connect(filt); filt.connect(nGain); nGain.connect(gain);
   src.start();
   AMB.nodes.push(src, filt, nGain);
-  if (want === 0) {        // ジャングル：そよ風＋鳥＋虫
-    filt.frequency.value = 420; nGain.gain.value = 0.05;
-    AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.6) ambChirp(); }, 2600));
-    AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.5) ambCricket(); }, 1900));
+  if (want === 0) {        // ジャングル：そよ風＋鳥＋虫（実録音があれば合成鳥はオフ）
+    filt.frequency.value = 420; nGain.gain.value = realAmb ? 0.03 : 0.05;
+    if (!realAmb) {
+      AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.6) ambChirp(); }, 2600));
+      AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.5) ambCricket(); }, 1900));
+    }
   } else if (want === 1) { // 湿地：重い風＋水滴
     filt.frequency.value = 240; nGain.gain.value = 0.07;
     AMB.timers.push(setInterval(() => { if (AMB && Math.random() < 0.6) ambDrip(); }, 2100));
@@ -3621,6 +3724,7 @@ function advance3D() {
 // DNA発見時：木立の間に黒い影の恐竜が現れ、ゆっくり身じろぎして霧に溶ける「気配」演出
 function spawnCrossing(id) {
   if (!T3) return;
+  sfx('growlFar'); // 遠くから唸り声（実録音）
   if (T3.crossing) { T3.scn.remove(T3.crossing.s); T3.crossing = null; }
   const mat = new THREE.SpriteMaterial({
     map: emojiTexture(DINO_MAP[id].emoji),
@@ -3947,15 +4051,22 @@ function flyToHeader(kind, n) { // 拾った物がカウンターへ吸い込ま
       const sy = fr.top + fr.height / 2 + rand(-18, 10);
       el.style.left = sx + 'px';
       el.style.top = sy + 'px';
+      el.style.transition = 'none';
       document.body.appendChild(el);
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        el.style.transform = `translate(${(tr.left + tr.width / 2 - sx).toFixed(0)}px, ${(tr.top + tr.height / 2 - sy).toFixed(0)}px) scale(.35)`;
-        el.style.opacity = '0.15';
-      }));
+      // 弧を描いて飛ぶ（中間点を進行方向と垂直にずらす）
+      const dx = tr.left + tr.width / 2 - sx, dy = tr.top + tr.height / 2 - sy;
+      const len = Math.hypot(dx, dy) || 1;
+      const arc = Math.min(60, len * 0.22) * (Math.random() < 0.5 ? 1 : -1);
+      const px2 = -dy / len * arc, py2 = dx / len * arc;
+      el.animate([
+        { transform: 'translate(0,0) scale(1)', opacity: 1 },
+        { transform: `translate(${(dx / 2 + px2).toFixed(0)}px, ${(dy / 2 + py2).toFixed(0)}px) scale(.72)`, opacity: 1, offset: 0.55 },
+        { transform: `translate(${dx.toFixed(0)}px, ${dy.toFixed(0)}px) scale(.3)`, opacity: 0.1 },
+      ], { duration: 560, easing: 'cubic-bezier(.3, 0, .75, 1)', fill: 'forwards' });
       setTimeout(() => {
         el.remove();
         if (chip) { chip.classList.remove('chip-pop'); void chip.offsetWidth; chip.classList.add('chip-pop'); }
-      }, 600);
+      }, 580);
     }, i * 75);
   }
 }
@@ -4115,6 +4226,7 @@ function startBattle(opp) {
   document.getElementById('btn-flee').textContent = opp.type === 'hunter' ? 'にげる（少し奪われる）' : 'にげる';
   document.getElementById('btn-speed').textContent = '⏩ 倍速にする';
   document.getElementById('battle-modal').classList.remove('hidden');
+  startBgm('battle');
   renderBattleTeam();
   renderBattle();
   pushLine(0); // 戦線を中央に戻す
@@ -4125,6 +4237,7 @@ function startBattle(opp) {
   const ap = document.getElementById('b-appear');
   ap.textContent = (opp.title || opp.name) + ' が あらわれた！！';
   ap.classList.remove('hidden');
+  if (!opp.type) sfx('roar'); // 野生のボスは咆哮して登場
   const tm = document.getElementById('b-tamer');
   if (opp.img) { tm.src = `images/${opp.img}.png`; tm.classList.remove('hidden'); }
   else tm.classList.add('hidden');
@@ -4648,6 +4761,8 @@ function fleeBattle() {
 }
 function closeBattle() {
   battle = null;
+  if (document.body.classList.contains('explore-mode')) startBgm('field');
+  else stopBgm();
   document.body.classList.remove('battle-mode');
   document.getElementById('vs-stamp').classList.add('hidden');
   document.getElementById('battle-modal').classList.add('hidden');
