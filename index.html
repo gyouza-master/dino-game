@@ -1723,9 +1723,105 @@
   main > section:not(.hidden) > *:nth-child(n+5) { animation-delay: .2s; }
   @keyframes riseIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
   body.explore-mode #tab-explore > *, body.explore-mode #tab-explore .panel > * { animation: none; }
+
+  /* ============ タイトル画面 ============ */
+  #title-screen {
+    position: fixed; inset: 0; z-index: 200; cursor: pointer; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(255,90,20,.18), transparent 60%),
+      linear-gradient(180deg, #0d1420 0%, #160f12 55%, #070508 100%);
+    transition: opacity .6s, visibility .6s;
+  }
+  #title-screen.out { opacity: 0; visibility: hidden; pointer-events: none; }
+  #title-screen.hidden { display: none; }
+  .ts-keyart {
+    position: absolute; inset: 0; background-size: cover; background-position: center 28%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ts-keyart::after { /* 下部をUI用に暗く締める */
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(5,6,10,.35), transparent 30%, transparent 55%, rgba(5,6,10,.9) 92%);
+  }
+  .ts-dino {
+    max-width: 88%; max-height: 62%; margin-bottom: 14%;
+    filter: drop-shadow(0 0 60px rgba(255,90,20,.55)) drop-shadow(0 24px 40px rgba(0,0,0,.8));
+    animation: tsDino 5s ease-in-out infinite alternate;
+  }
+  #title-screen.has-keyart .ts-dino { display: none; } /* キービジュアルが来たら絵は背景に任せる */
+  @keyframes tsDino { from { transform: scale(1) translateY(0); } to { transform: scale(1.04) translateY(-8px); } }
+  .ts-rays {
+    position: absolute; inset: -40%; pointer-events: none; opacity: .5;
+    background: repeating-conic-gradient(from 0deg at 50% 36%, rgba(255,160,60,.08) 0deg 7deg, transparent 7deg 20deg);
+    -webkit-mask-image: radial-gradient(circle at 50% 36%, #000 0%, transparent 60%);
+    mask-image: radial-gradient(circle at 50% 36%, #000 0%, transparent 60%);
+    animation: beamsSpin 40s linear infinite;
+  }
+  .ts-particles { position: absolute; inset: 0; pointer-events: none; }
+  .ts-particles i {
+    position: absolute; bottom: -12px; width: 5px; height: 5px; border-radius: 50%;
+    background: #ffb36a; box-shadow: 0 0 8px rgba(255,150,60,.9);
+    animation: tsEmber 7s linear infinite;
+  }
+  .ts-particles i:nth-child(1) { left: 8%; animation-delay: 0s; }
+  .ts-particles i:nth-child(2) { left: 22%; animation-delay: 1.8s; width: 3px; height: 3px; }
+  .ts-particles i:nth-child(3) { left: 35%; animation-delay: 3.4s; }
+  .ts-particles i:nth-child(4) { left: 48%; animation-delay: 0.9s; width: 4px; height: 4px; }
+  .ts-particles i:nth-child(5) { left: 61%; animation-delay: 2.6s; }
+  .ts-particles i:nth-child(6) { left: 74%; animation-delay: 4.5s; width: 3px; height: 3px; }
+  .ts-particles i:nth-child(7) { left: 86%; animation-delay: 1.2s; }
+  .ts-particles i:nth-child(8) { left: 94%; animation-delay: 5.4s; width: 4px; height: 4px; }
+  @keyframes tsEmber {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
+    8% { opacity: 1; }
+    100% { transform: translateY(-105vh) translateX(26px); opacity: 0; }
+  }
+  .ts-logo {
+    position: relative; z-index: 1; width: min(78%, 360px); margin-bottom: 6px;
+    filter: drop-shadow(0 6px 18px rgba(0,0,0,.8)) drop-shadow(0 0 24px rgba(255,140,30,.35));
+    animation: tsLogo .8s cubic-bezier(.2, 1.1, .4, 1) backwards;
+  }
+  @keyframes tsLogo { from { opacity: 0; transform: translateY(-18px) scale(1.15); } to { opacity: 1; transform: none; } }
+  .ts-logotext { position: relative; z-index: 1; font-size: 30px; font-weight: 900; color: #ffd24a; text-shadow: 0 0 18px rgba(255,120,0,.8), 0 3px 4px #000; margin-bottom: 8px; }
+  .ts-tap {
+    position: relative; z-index: 1; margin-bottom: 26px;
+    font-size: 16px; font-weight: 900; letter-spacing: .35em; color: #ffe9c0;
+    text-shadow: 0 0 14px rgba(255,170,60,.9), 0 2px 3px #000;
+    animation: tsTap 1.5s ease-in-out infinite;
+  }
+  @keyframes tsTap { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+  .ts-ver {
+    position: relative; z-index: 1; margin-bottom: max(14px, env(safe-area-inset-bottom));
+    font-size: 9px; letter-spacing: .3em; color: rgba(200,215,230,.5); font-weight: 900;
+  }
+
+  /* ナビアイコン：画像が来たら差し替え */
+  .nav-img { width: 26px; height: 26px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+
+  /* カードフレーム：画像が来たら有効化（figure枠を上掛け） */
+  body.hasframes .dino-card { border: none; }
+  body.hasframes .dino-card::after {
+    content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background-size: 100% 100%;
+  }
+  body.hasframes .dino-card.r-N::after { background-image: url('images/frame-n.png'); }
+  body.hasframes .dino-card.r-R::after { background-image: url('images/frame-r.png'); }
+  body.hasframes .dino-card.r-SR::after { background-image: url('images/frame-sr.png'); }
+  body.hasframes .dino-card.r-SSR::after { background-image: url('images/frame-ssr.png'); }
 </style>
 </head>
 <body>
+  <!-- ===== タイトル画面 ===== -->
+  <div id="title-screen" onclick="dismissTitle()">
+    <div class="ts-rays"></div>
+    <div class="ts-keyart" id="ts-keyart">
+      <img class="ts-dino" src="images/trex.png" alt="" onerror="this.remove()">
+    </div>
+    <div class="ts-particles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <img class="ts-logo" src="images/logo.png" alt="ダイナソー・ドミニオン" onerror="this.outerHTML='<div class=ts-logotext>ダイナソー・ドミニオン</div>'">
+    <div class="ts-tap">TAP TO START</div>
+    <div class="ts-ver">ISLA DOMINION PROJECT</div>
+  </div>
 <div id="splash"><img src="images/logo.png" onerror="this.remove()"></div>
 <div id="app">
   <header>
@@ -2117,6 +2213,43 @@ const UI_OK = new Set();
   im.onload = () => { UI_OK.add(nm); if (typeof renderAll === 'function') renderAll(); };
   im.src = `images/ui-${nm}.png`;
 });
+// タイトル画面：キービジュアルが置かれたら背景に採用
+(() => {
+  const im = new Image();
+  im.onload = () => {
+    const ka = document.getElementById('ts-keyart');
+    if (ka) { ka.style.backgroundImage = `url(images/title-keyart.jpg)`; document.getElementById('title-screen').classList.add('has-keyart'); }
+  };
+  im.src = 'images/title-keyart.jpg';
+})();
+function dismissTitle() {
+  const t = document.getElementById('title-screen');
+  if (!t || t.classList.contains('out')) return;
+  t.classList.add('out');
+  setTimeout(() => t.classList.add('hidden'), 700);
+  sfx('rare');          // 起動ファンファーレ（ユーザー操作起点なので音が解禁される）
+  startAmbience();      // 環境音とBGMもここから開始
+}
+// ナビアイコン：images/nav-*.png が置かれたら差し替え
+['field', 'explore', 'dex', 'team', 'chest'].forEach(tab => {
+  const file = tab === 'chest' ? 'nav-gacha' : 'nav-' + tab;
+  const im = new Image();
+  im.onload = () => {
+    const btn = document.getElementById('nav-' + tab);
+    const ico = btn && btn.querySelector('.nav-ico');
+    if (ico) ico.innerHTML = `<img class="nav-img" src="images/${file}.png" alt="">`;
+  };
+  im.src = `images/${file}.png`;
+});
+// カードフレーム：4種すべて揃ったら有効化
+(() => {
+  let got = 0;
+  ['n', 'r', 'sr', 'ssr'].forEach(rk => {
+    const im = new Image();
+    im.onload = () => { if (++got === 4) { document.body.classList.add('hasframes'); if (typeof renderAll === 'function') renderAll(); } };
+    im.src = `images/frame-${rk}.png`;
+  });
+})();
 function uiIco(nm, fallbackHTML, cls) {
   return UI_OK.has(nm) ? `<img class="${cls || 'ui-ico'}" src="images/ui-${nm}.png" alt="">` : fallbackHTML;
 }
